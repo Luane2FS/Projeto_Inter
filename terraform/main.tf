@@ -70,14 +70,13 @@ resource "aws_route_table_association" "public_assoc" {
 
 # ------------------------------------------------------------------------------
 # 5. Security Group (Firewall Virtual com Regras de Entrada e Saída)
-# - Porta 22 (SSH): Restrito exclusivamente ao IP do administrador (curl ifconfig.me)
+# - Porta 22 (SSH): Restrito exclusivamente ao IP do administrador (curl -4 ifconfig.me)
 # - Porta 3000 (API SaaS): Liberado publicamente para requisições do Postman/Clientes
-# - Porta 80 (HTTP): Liberado para conexões web
 # - Saída irrestrita (Egress 0.0.0.0/0) para download de pacotes e contêineres Docker
 # ------------------------------------------------------------------------------
 resource "aws_security_group" "app_sg" {
   name        = "${var.project_name}-sg"
-  description = "Security Group com acesso SSH restrito e portas HTTP/API liberadas"
+  description = "Security Group com acesso SSH restrito ao IP do admin e porta da API liberada"
   vpc_id      = aws_vpc.main.id
 
   # Regra de Entrada: SSH (Porta 22) restrita ao IP administrativo
@@ -94,15 +93,6 @@ resource "aws_security_group" "app_sg" {
     description = "Acesso a API SaaS Express/Node.js"
     from_port   = var.app_port
     to_port     = var.app_port
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Regra de Entrada: HTTP padrao (Porta 80)
-  ingress {
-    description = "Trafego HTTP padrao"
-    from_port   = 80
-    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -188,7 +178,11 @@ resource "aws_instance" "app_server" {
   }
 
   # Script de inicialização (user_data) executado no boot para instalar Docker, Compose e rodar a aplicação
-  user_data = file("${path.module}/scripts/user_data.sh")
+  user_data = templatefile("${path.module}/scripts/user_data.sh.tftpl", {
+    github_repo_url = var.github_repo_url
+    app_port        = var.app_port
+    project_name    = var.project_name
+  })
 
   user_data_replace_on_change = true
 

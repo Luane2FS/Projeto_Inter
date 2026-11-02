@@ -1,0 +1,95 @@
+#!/bin/bash
+# ==============================================================================
+# user_data.sh.tftpl - Script de Inicialização Automatizada da Instância EC2
+# Renderizado pelo Terraform via templatefile
+# Projeto Integrador: Capacita Computação em Nuvem
+# ==============================================================================
+
+set -euo pipefail
+
+# Redirecionar todas as saídas para arquivo de log legível via SSH
+exec > >(tee -a /var/log/user_data.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+echo "======================================================================"
+echo "[INFO] Iniciando provisionamento automatizado da instância EC2..."
+echo "[INFO] Projeto: ${project_name}"
+echo "[INFO] Repositório Alvo: ${github_repo_url}"
+echo "[INFO] Data e Hora: $(date)"
+echo "======================================================================"
+
+# 1. Atualizar repositórios e pacotes do sistema operacional
+echo "[INFO] 1/5 Atualizando pacotes do sistema..."
+yum update -y
+
+# 2. Instalar Docker, Git e utilitários
+echo "[INFO] 2/5 Instalando Docker, Git e utilitários..."
+if command -v amazon-linux-extras &> /dev/null; then
+  amazon-linux-extras install docker -y
+else
+  yum install -y docker
+fi
+yum install -y git curl jq
+
+# 3. Habilitar e iniciar o daemon do Docker
+echo "[INFO] 3/5 Habilitando e inicializando serviço Docker..."
+systemctl enable docker
+systemctl start docker
+
+# Conceder permissão ao usuário padrão 'ec2-user' para interagir com o Docker sem sudo
+usermod -aG docker ec2-user
+
+# 4. Instalar o plugin Docker Compose v2 oficial
+echo "[INFO] 4/5 Instalando Docker Compose v2..."
+DOCKER_CONFIG="$${DOCKER_CONFIG:-/usr/local/lib/docker}"
+mkdir -p "$DOCKER_CONFIG/cli-plugins"
+ARCH="$(uname -m)"
+curl -SL "https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-linux-$${ARCH}" -o "$DOCKER_CONFIG/cli-plugins/docker-compose"
+chmod +x "$DOCKER_CONFIG/cli-plugins/docker-compose"
+ln -sf "$DOCKER_CONFIG/cli-plugins/docker-compose" /usr/bin/docker-compose
+
+docker --version
+docker compose version
+
+# 5. Clonar o repositório oficial da aplicação
+APP_DIR="/opt/projeto-inter"
+echo "[INFO] 5/5 Preparando diretório da aplicação em $APP_DIR..."
+mkdir -p "$APP_DIR"
+cd "$APP_DIR"
+
+echo "[INFO] Clonando repositório configurado no Terraform: ${github_repo_url}..."
+if ! git clone "${github_repo_url}" repo; then
+  echo "======================================================================"
+  echo "[FATAL] Falha crítica: Não foi possível clonar o repositório ${github_repo_url}."
+  echo "[FATAL] Verifique se a URL está acessível ou se o repositório requer autenticação."
+  echo "======================================================================"
+  exit 1
+fi
+
+cd repo
+
+# Gerar JWT_SECRET criptográfica caso não tenha sido fornecida via ambiente
+if [ ! -f .env ]; then
+  echo "[INFO] Gerando chave JWT segura para execução inicial dos contêineres..."
+  GEN_JWT_SECRET=$(head -c 32 /dev/urandom | xxd -ps -c 32 2>/dev/null || openssl rand -hex 32)
+  cat << EOF > .env
+NODE_ENV=production
+PORT=${app_port}
+MONGO_URI=mongodb://mongodb:27017/saas
+JWT_SECRET=$${GEN_JWT_SECRET}
+RATE_LIMIT_STORE=mongodb
+ALLOW_PUBLIC_MULTI_REGISTER=false
+ALLOW_DIRECT_PLAN_CHANGE=false
+CORS_ORIGIN=*
+EOF
+  echo "[INFO] Arquivo .env gerado com sucesso com segredo forte."
+fi
+
+# Construir e inicializar contêineres em segundo plano
+echo "[INFO] Construindo e inicializando contêineres oficiais via Docker Compose..."
+docker compose up -d --build
+
+echo "======================================================================"
+echo "[INFO] Provisionamento concluído com sucesso!"
+echo "[INFO] Verifique os contêineres com: docker compose ps"
+echo "[INFO] Teste local na EC2: curl http://127.0.0.1:${app_port}/health"
+echo "======================================================================"

@@ -54,9 +54,13 @@ variable "instance_type" {
 }
 
 variable "admin_ssh_ip" {
-  description = "Endereço IP público do administrador com máscara /32 para restringir acesso SSH (obtido via: curl ifconfig.me)"
+  description = "Endereço IP público do administrador com máscara /32 para restringir acesso SSH (obtido via: curl -4 ifconfig.me)"
   type        = string
-  default     = "0.0.0.0/0" # Recomenda-se substituir pelo seu IP real ex: 177.100.20.10/32 no terraform.tfvars
+
+  validation {
+    condition     = can(regex("^(\\d{1,3}\\.){3}\\d{1,3}/\\d{1,2}$", var.admin_ssh_ip)) && var.admin_ssh_ip != "0.0.0.0/0"
+    error_message = "Por segurança (requisito da Unidade 04), 'admin_ssh_ip' deve ser o seu IP público com máscara /32 (ex: 187.78.167.114/32). Não utilize 0.0.0.0/0 para SSH."
+  }
 }
 
 variable "create_ssh_key" {

@@ -44,6 +44,16 @@ output "api_endpoint" {
 }
 
 output "api_healthcheck_url" {
-  description = "URL para verificação de integridade (Health Check) da aplicação"
+  description = "URL consolidada de verificação de integridade (Health Check: status e dependências)"
   value       = "http://${aws_instance.app_server.public_ip}:${var.app_port}/health"
+}
+
+output "api_liveness_url" {
+  description = "URL de verificação de liveness (processo HTTP ativo)"
+  value       = "http://${aws_instance.app_server.public_ip}:${var.app_port}/health/live"
+}
+
+output "api_readiness_url" {
+  description = "URL de verificação de readiness (conectividade com banco MongoDB ativa)"
+  value       = "http://${aws_instance.app_server.public_ip}:${var.app_port}/health/ready"
 }

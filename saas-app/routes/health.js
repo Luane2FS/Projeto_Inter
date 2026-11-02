@@ -27,6 +27,18 @@ const isMongoReady = async (connection = mongoose.connection, timeoutMs = MONGO_
   }
 };
 
+router.get('/', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  const ready = await isMongoReady();
+  const statusCode = ready ? 200 : 503;
+  return res.status(statusCode).json({
+    status: ready ? 'ok' : 'degraded',
+    live: true,
+    ready,
+    dependencies: { mongodb: ready ? 'ok' : 'unavailable' },
+  });
+});
+
 router.get('/live', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   return res.status(200).json({ status: 'ok' });

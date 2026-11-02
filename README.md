@@ -43,11 +43,19 @@ A solução adota uma estratégia em camadas para entrega de nuvem:
 docker compose up -d --build
 ```
 
-2. Verifique o status dos serviços e healthcheck:
+2. Verifique o status dos serviços e healthchecks:
 
 ```bash
 docker compose ps
+
+# Health check consolidado (status e dependências):
 curl http://localhost:3000/health
+
+# Liveness probe (processo HTTP ativo):
+curl http://localhost:3000/health/live
+
+# Readiness probe (conectividade MongoDB):
+curl http://localhost:3000/health/ready
 ```
 
 3. Para encerrar:
@@ -136,7 +144,7 @@ O projeto dispõe de uma pasta dedicada com scripts de teste de ponta a ponta qu
 - **`node test-scripts/test-concurrency.js`**: Teste de carga e concorrência atômica sob limite de vagas e admins.
 - **`node test-scripts/test-rate-limit.js`**: Teste de bloqueio HTTP 429 e `Retry-After`.
 
-Consulte [test-scripts/README.md](file:///C:/Users/lucas/Downloads/Lucas/Capacita/Projeto_Inter_AR/test-scripts/README.md) para documentação completa.
+Consulte [test-scripts/README.md](test-scripts/README.md) para documentação completa.
 
 ## Execução no GitHub Codespaces / Dev Containers
 
@@ -156,8 +164,9 @@ npm start
 
 | Método | Rota | Autenticação | Papel | Descrição |
 | :--- | :--- | :---: | :---: | :--- |
-| `GET` | `/health/live` | Pública | — | Confirma que o processo da API está ativo |
-| `GET` | `/health/ready` | Pública | — | Confirma que a API consegue consultar o MongoDB |
+| `GET` | `/health` | Pública | — | Status consolidado da API e integridade das dependências |
+| `GET` | `/health/live` | Pública | — | Liveness probe: confirma que o processo da API está ativo |
+| `GET` | `/health/ready` | Pública | — | Readiness probe: confirma que a API consegue consultar o MongoDB |
 | `GET` | `/plans` | Pública | — | Lista os planos disponíveis cadastrados no MongoDB |
 | `GET` | `/plans/:name` | Pública | — | Consulta detalhes de um plano específico |
 | `POST` | `/tenants` | Pública (Rate Limited) | — | Cadastra tenant em plano gratuito e retorna token para o primeiro cadastro |

@@ -18,10 +18,10 @@ availability_zone  = "us-east-1a"
 # Tipo da instância (Free Tier)
 instance_type = "t2.micro"
 
-# IMPORTANTE PARA SEGURANÇA:
-# Descubra seu IP público executando: curl ifconfig.me
-# e substitua abaixo (ex: "177.100.20.10/32"). Para testes amplos utilize "0.0.0.0/0".
-admin_ssh_ip = "0.0.0.0/0"
+# IMPORTANTE PARA SEGURANÇA (Unidade 04):
+# Descubra seu IP público executando: curl -4 ifconfig.me
+# Substitua abaixo com máscara /32 (ex: "187.78.167.114/32"). O valor 0.0.0.0/0 é bloqueado por validação.
+admin_ssh_ip = "SEU_IP_AQUI/32"
 
 # Geração automática da chave SSH pelo Terraform (true = gera arquivo .pem localmente)
 create_ssh_key = true

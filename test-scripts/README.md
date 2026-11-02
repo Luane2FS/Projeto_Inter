@@ -13,7 +13,7 @@ Estes scripts realizam chamadas HTTP reais contra a API em execução (`http://l
 | Arquivo | Descrição |
 | :--- | :--- |
 | **`run-all.js`** | **Orquestrador principal**: executa todas as suítes em sequência e exibe relatório consolidado com tempos e status. |
-| **`test-smoke.js`** | Valida a saúde da API, endpoint `/plans`, cabeçalhos de segurança (Helmet), cabeçalhos de Rate Limit IETF e rota 404. |
+| **`test-smoke.js`** | Valida a saúde da API, endpoint `/plans`, cabeçalhos de segurança nativos (securityHeaders: CSP, nosniff, no-frame), cabeçalhos de Rate Limit IETF e rota 404. |
 | **`test-onboarding.js`** | Valida rejeição de planos pagos sem faturamento, criação de tenant, geração de `registrationToken` (64 hex), validação e consumo do token no 1º registro de admin. |
 | **`test-rbac.js`** | Valida o controle de papéis (`admin` vs `member`): bloqueio de ações administrativas por membros, atualização de perfil próprio, proteção contra autoexclusão e revogação imediata de JWT após exclusão. |
 | **`test-isolation.js`** | Valida o isolamento estrito entre `Tenant A` e `Tenant B` (bloqueio 403/404 em consultas e mutações cruzadas), e unicidade de e-mail por tenant com login desambiguado. |

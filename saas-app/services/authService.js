@@ -143,5 +143,4 @@ const registerUser = async ({ name, email, password, tenantId, registrationToken
 module.exports = {
   loginUser,
   registerUser,
-  ...userService,
 };

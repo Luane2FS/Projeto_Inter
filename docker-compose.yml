@@ -42,10 +42,10 @@ services:
     container_name: saas-api
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:${PORT:-3000}"
     environment:
       NODE_ENV: "production"
-      PORT: "3000"
+      PORT: "${PORT:-3000}"
       MONGO_URI: "mongodb://mongodb:27017/saas"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET obrigatoria (minimo 32 caracteres). Configure em saas-app/.env ou no ambiente.}"
       ALLOW_PUBLIC_MULTI_REGISTER: "false"

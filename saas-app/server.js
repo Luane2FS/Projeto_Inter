@@ -50,6 +50,13 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 const MIN_JWT_SECRET_LENGTH = 32;
+const JWT_PLACEHOLDER_PATTERN = /substitua_por_uma_chave/i;
+
+const isWeakOrPlaceholderSecret = (secret) => {
+  if (!secret || typeof secret !== 'string') return true;
+  const trimmed = secret.trim();
+  return trimmed.length < MIN_JWT_SECRET_LENGTH || JWT_PLACEHOLDER_PATTERN.test(trimmed);
+};
 
 const registerGracefulShutdown = (server) => {
   let shuttingDown = false;
@@ -98,13 +105,13 @@ const startServer = async () => {
     process.exit(1);
   }
 
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim().length < MIN_JWT_SECRET_LENGTH) {
+  if (isWeakOrPlaceholderSecret(process.env.JWT_SECRET)) {
     if (process.stdin.isTTY) {
       const readline = require('readline');
       const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
       const answer = await new Promise((resolve) => {
         rl.question(
-          `\n[server] JWT_SECRET ausente ou fraca no .env (mínimo de ${MIN_JWT_SECRET_LENGTH} caracteres).\nDeseja executar o script para gerar e configurar a chave automaticamente agora? (S/n): `,
+          `\n[server] JWT_SECRET ausente, fraca ou contendo texto de exemplo no .env (mínimo de ${MIN_JWT_SECRET_LENGTH} caracteres).\nDeseja executar o script para gerar e configurar a chave automaticamente agora? (S/n): `,
           (ans) => {
             rl.close();
             resolve(ans.trim().toLowerCase());
@@ -122,9 +129,9 @@ const startServer = async () => {
       }
     }
 
-    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim().length < MIN_JWT_SECRET_LENGTH) {
+    if (isWeakOrPlaceholderSecret(process.env.JWT_SECRET)) {
       console.error(
-        `JWT_SECRET ausente ou fraca no arquivo .env (mínimo de ${MIN_JWT_SECRET_LENGTH} caracteres).`
+        `JWT_SECRET ausente, fraca ou usando texto de exemplo no arquivo .env (mínimo de ${MIN_JWT_SECRET_LENGTH} caracteres e não pode ser placeholder).`
       );
       process.exit(1);
     }

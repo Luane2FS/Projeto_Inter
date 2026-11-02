@@ -35,7 +35,7 @@ const run = async () => {
     assert(res.data && res.data.message, 'Deve retornar mensagem de erro');
   });
 
-  await runner.step('1.4. Validação de cabeçalhos de segurança (Helmet/SecurityHeaders)', async () => {
+  await runner.step('1.4. Validação de cabeçalhos de segurança (securityHeaders nativos)', async () => {
     const res = await apiRequest('/plans');
     assert(
       res.headers.get('x-content-type-options') === 'nosniff',

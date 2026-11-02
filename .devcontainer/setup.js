@@ -1,11 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 
 const rootDir = path.resolve(__dirname, '..');
 const saasAppDir = path.join(rootDir, 'saas-app');
-const envExamplePath = path.join(saasAppDir, '.env.example');
 const envPath = path.join(saasAppDir, '.env');
 
 console.log('[devcontainer] Instalando dependências em saas-app...');

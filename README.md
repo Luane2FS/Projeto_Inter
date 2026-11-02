@@ -19,8 +19,8 @@ Este projeto integra o desenvolvimento de uma **API RESTful SaaS Multitenant** (
 ## Arquitetura Geral
 
 A solução adota uma estratégia em camadas para entrega de nuvem:
-1. **Infraestrutura como Serviço (IaaS)**: Provisionamento automatizado via **Terraform** na AWS (VPC `10.0.0.0/16`, Subnet pública `10.0.1.0/24`, Internet Gateway, Tabela de Rotas, Security Group restrito e Instância EC2 `t2.micro`).
-2. **Contêineres (CaaS / Empacotamento)**: **Docker e Docker Compose** orquestrando os serviços `saas-api` e `mongodb`, com isolamento de rede interna (`saas-internal-network`) e persistência de dados em volume nomeado (`saas-mongo-data`).
+1. **Infraestrutura como Serviço (IaaS)**: Provisionamento automatizado via **Terraform** na AWS (VPC `10.0.0.0/16`, Subnet pública `10.0.1.0/24`, Internet Gateway, Tabela de Rotas, Security Group com princípio do menor privilégio e regras para TLS, Volume EBS persistente desacoplado para o MongoDB e Instância EC2 `t3.micro` com **Amazon Linux 2023**).
+2. **Conteinerização sobre IaaS**: **Docker e Docker Compose** executando os contêineres `saas-api` e `mongodb` sobre uma topologia de rede em duas camadas (`saas-frontend-network` pública e `saas-backend-network` interna com `internal: true`), garantindo isolamento total do banco de dados e persistência no volume EBS.
 3. **Software como Serviço (SaaS)**: Aplicação multitenant com planos `freemium` (até 3 usuários) e `premium`, autenticação JWT (`HS256`), controle de acesso por papéis (`admin`/`member`), isolamento lógico estrito e rate limiting.
 
 ---

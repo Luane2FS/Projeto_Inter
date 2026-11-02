@@ -5,21 +5,18 @@
 
 services:
   # ----------------------------------------------------------------------------
-  # Banco de Dados MongoDB 8.0 (Isolado na rede interna)
+  # Banco de Dados MongoDB 8.0 (Isolado estritamente na rede interna backend)
   # ----------------------------------------------------------------------------
   mongodb:
     image: mongo:8.0
     container_name: saas-mongodb
     restart: unless-stopped
     command: ["mongod", "--bind_ip_all"]
-    # Porta mapeada estritamente em loopback (127.0.0.1) para depuração local do host
-    # Impedindo exposição acidental da porta 27017 na interface pública da AWS
-    ports:
-      - "127.0.0.1:27017:27017"
+    # Sem mapeamento de porta externa no host: isolamento total com internal: true
     volumes:
       - mongo-data:/data/db
     networks:
-      - saas-network
+      - saas-backend-network
     healthcheck:
       test:
         - CMD
@@ -34,6 +31,7 @@ services:
 
   # ----------------------------------------------------------------------------
   # Aplicação SaaS Multitenant (Node.js 22 + Express 5)
+  # Intermediária entre a rede pública frontend e a rede interna de dados
   # ----------------------------------------------------------------------------
   app:
     build:
@@ -56,19 +54,26 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - saas-network
+      - saas-frontend-network
+      - saas-backend-network
 
 # ------------------------------------------------------------------------------
-# Volumes Persistentes (Garantem que dados sobrevivam a recriação de containers)
+# Volumes Persistentes (Mapeados no disco EBS desacoplado via bind mount)
 # ------------------------------------------------------------------------------
 volumes:
   mongo-data:
     name: saas-mongo-data
 
 # ------------------------------------------------------------------------------
-# Rede Bridge Privada (Comunicação isolada entre a API e o Banco)
+# Topologia de Redes em Camadas (Segurança em Profundidade)
+# - saas-frontend-network: Rede bridge pública para entrada de tráfego na API
+# - saas-backend-network: Rede estritamente INTERNA (internal: true) isolando o MongoDB
 # ------------------------------------------------------------------------------
 networks:
-  saas-network:
-    name: saas-internal-network
+  saas-frontend-network:
+    name: saas-frontend-network
     driver: bridge
+  saas-backend-network:
+    name: saas-internal-backend-network
+    driver: bridge
+    internal: true

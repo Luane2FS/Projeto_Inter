@@ -1,0 +1,70 @@
+================================================================
+EVIDÊNCIA DE VALIDAÇÃO DE CONEXÃO REMOTA SSH NA AWS EC2
+Projeto Integrador: Capacita Computação em Nuvem
+Data: 02/11/2026
+Instância EC2: i-089bd54aa9639c3bf (t3.micro - us-east-1)
+IP Público: 35.170.55.119
+Chave Privada: terraform/projeto-inter-capacita-key.pem (RSA 2048)
+================================================================
+
+$ ssh -i ./terraform/projeto-inter-capacita-key.pem ec2-user@35.170.55.119
+
+   ,     #_
+   ~\_  ####_        Amazon Linux 2023
+  ~~  \_#####\
+  ~~     \###|
+  ~~       \#/ ___   https://aws.amazon.com/linux/amazon-linux-2023
+   ~~       V~' '->
+    ~~~         /
+      ~~._.   _/
+         _/ _/
+       _/m/'
+
+================================================================
+   VALIDAÇÃO FORMAL DE CONEXÃO REMOTA SSH NA INSTÂNCIA EC2
+================================================================
+[1] Identidade e Host:
+Usuário autenticado: ec2-user
+Hostname: ip-10-0-1-238.ec2.internal
+Endereçamento IP local: 10.0.1.238 172.17.0.1 172.18.0.1 172.19.0.1 172.20.0.1
+Kernel: Linux ip-10-0-1-238.ec2.internal 6.12.113-138.209.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Oct 20 21:57:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+
+[2] Sistema Operacional:
+NAME="Amazon Linux"
+VERSION="2023"
+PRETTY_NAME="Amazon Linux 2023.12.20261102"
+SUPPORT_END="2029-06-30"
+
+[3] Uptime da Máquina:
+20:47:29 up 10 min, 0 users, load average: 0.15, 0.24, 0.18
+
+[4] Armazenamento e Montagem do Volume EBS Desacoplado:
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1   20G  3.3G   17G  17% /
+/dev/nvme1n1    9.8G  202M  9.5G   3% /mnt/mongo-data
+
+NAME          MAJ:MIN RM SIZE RO TYPE MOUNTPOINTS
+nvme0n1       259:0    0  20G  0 disk 
+├─nvme0n1p1   259:1    0  20G  0 part /
+├─nvme0n1p127 259:2    0   1M  0 part 
+└─nvme0n1p128 259:3    0  10M  0 part /boot/efi
+nvme1n1       259:4    0  10G  0 disk /var/lib/docker/volumes/saas-mongo-data/_data
+                                      /mnt/mongo-data
+
+[5] Permissões Estritas do Arquivo de Segredos (.env):
+-rw-------. 1 ec2-user ec2-user 249 Nov  2 20:40 /opt/projeto-inter/repo/.env
+
+[6] Status dos Contêineres em Execução:
+NAMES          STATUS                    PORTS
+saas-api       Up 50 seconds (healthy)   0.0.0.0:3000->3000/tcp, :::3000->3000/tcp
+saas-mongodb   Up 57 seconds (healthy)   
+
+[7] Redes Docker Configuradas (Frontend e Backend internal: true):
+NETWORK ID     NAME                            DRIVER    SCOPE
+ee0c2c974c4e   saas-frontend-network           bridge    local
+b6259c57bdd9   saas-internal-backend-network   bridge    local
+
+================================================================
+CONEXÃO SSH VALIDADA COM SUCESSO PELA CHAVE RSA 2048
+Autenticação via chave assimétrica sem senha (Best Practice AWS)
+================================================================

@@ -115,7 +115,9 @@ cd repo
 if [ ! -f .env ]; then
   echo "[INFO] Gerando chave JWT segura para execução inicial dos contêineres..."
   GEN_JWT_SECRET=$(head -c 32 /dev/urandom | xxd -ps -c 32 2>/dev/null || openssl rand -hex 32)
-  cat << EOF > .env
+  (
+    umask 077
+    cat << EOF > .env
 NODE_ENV=production
 PORT=${app_port}
 MONGO_URI=mongodb://mongodb:27017/saas
@@ -125,7 +127,10 @@ ALLOW_PUBLIC_MULTI_REGISTER=false
 ALLOW_DIRECT_PLAN_CHANGE=false
 CORS_ORIGIN=*
 EOF
-  echo "[INFO] Arquivo .env gerado com sucesso com segredo forte."
+    chmod 600 .env
+  )
+  chown ec2-user:ec2-user .env
+  echo "[INFO] Arquivo .env gerado com sucesso com segredo forte e permissões restritas (0600)."
 fi
 
 # Construir e inicializar contêineres em segundo plano

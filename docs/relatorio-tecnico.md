@@ -25,11 +25,11 @@ A computação em nuvem estrutura-se em diferentes modelos de serviço (IaaS, Pa
 | :--- | :--- | :--- | :--- |
 | **SaaS** | Consumo direto | Nenhuma sobre a infraestrutura da nuvem | É o **produto entregue** aos clientes finais (tenants), mas não o modelo de infraestrutura utilizado para hospedagem. |
 | **PaaS** | Plataforma gerenciada | Gerenciamento apenas de código e dados | Reduz o controle sobre a topologia de rede e os custos em cenários com banco de dados próprio acoplado. |
-| **IaaS + CaaS** *(Adotado)* | Controle total de SO e rede com contêineres | Configuração de VPC, firewall, sistema operacional e orquestração de contêineres | **Modelo escolhido**: Permite automação completa via Terraform, isolamento estrito de portas e cumprimento dos requisitos da disciplina. |
+| **IaaS com Docker Compose** *(Adotado)* | Controle total de SO e rede com contêineres | Configuração de VPC, firewall, sistema operacional e execução de contêineres | **Modelo escolhido**: Hospedagem IaaS autogerenciada na AWS, utilizando Docker Compose para isolamento e portabilidade da aplicação e do banco de dados. |
 
-A solução foi estruturada no modelo **IaaS (Infrastructure as a Service)** na AWS, complementada por **CaaS (Containers as a Service)** localmente na máquina virtual:
-1. **Infraestrutura IaaS (AWS)**: Uma Virtual Private Cloud (VPC) com sub-rede pública, Internet Gateway, tabela de rotas e firewall virtual (Security Group) provisiona o ambiente isolado onde opera uma máquina virtual EC2 `t3.micro` executando **Amazon Linux 2023 (AL2023)**, substituindo o legado Amazon Linux 2 (cujo suporte oficial encerrou em 2026).
-2. **Camada CaaS (Docker & Docker Compose)**: Dentro da EC2, o Docker isola o processo da API e do MongoDB em uma rede bridge privada interna, eliminando a dependência do sistema operacional hospedeiro e garantindo empacotamento imutável.
+A solução foi estruturada como um **produto SaaS hospedado sobre infraestrutura IaaS (Infrastructure as a Service)** na AWS, utilizando **Docker e Docker Compose** para a conteinerização local:
+1. **Infraestrutura IaaS (AWS)**: Uma Virtual Private Cloud (VPC) com sub-rede pública, Internet Gateway, tabela de rotas, volume EBS desacoplado e firewall virtual (Security Group) provisiona o ambiente básico de rede, computação e armazenamento onde opera uma máquina virtual EC2 `t3.micro` executando **Amazon Linux 2023 (AL2023)**.
+2. **Conteinerização sobre IaaS (Docker & Docker Compose)**: O Docker Compose em uma EC2 autogerenciada não se caracteriza como uma plataforma gerenciada CaaS (como AWS ECS ou EKS, que delegam o plano de controle e a orquestração ao provedor). Trata-se de uma abordagem de conteinerização sobre IaaS, provendo imutabilidade de ambiente e isolamento em redes virtuais controladas.
 3. **Produto SaaS**: Para os usuários externos e empresas contratantes, a solução é oferecida como um software sob demanda multitenant com controle de cotas (`freemium` e `premium`), isolamento lógico de dados e autenticação baseada em tokens JWT.
 
 ---
@@ -68,12 +68,13 @@ A solução foi estruturada no modelo **IaaS (Infrastructure as a Service)** na 
 |   |   |   | Provisionamento: user_data.sh.tftpl (dnf + Docker + Compose + Auto-Mount) |   |   |
 |   |   |   |                                                                           |   |
 |   |   |   |   +-------------------------------------------------------------------+   |   |
-|   |   |   |   | Docker Engine / Docker Compose                                    |   |   |
+|   |   |   |   | Docker Engine / Docker Compose (Conteinerização sobre IaaS)       |   |   |
 |   |   |   |   |                                                                   |   |   |
-|   |   |   |   |   Rede Bridge Privada: saas-internal-network                      |   |   |
-|   |   |   |   |                                                                   |   |   |
-|   |   |   |   |   [ Contêiner: saas-api ] <=======> [ Contêiner: mongodb ]        |   |   |
-|   |   |   |   |   Node.js 22 Alpine (Porta 3000)    MongoDB 8.0 (127.0.0.1)          |   |   |
+|   |   |   |   |   Rede Frontend (Bridge): saas-frontend-network                   |   |   |
+|   |   |   |   |   [ Contêiner: saas-api ] (Node.js 22 Alpine - Porta 3000)        |   |   |
+|   |   |   |   |          |                                                        |   |   |
+|   |   |   |   |   Rede Backend (internal: true): saas-internal-backend-network    |   |   |
+|   |   |   |   |   [ Contêiner: saas-mongodb ] (MongoDB 8.0 - Sem saída Internet)  |   |   |
 |   |   |   |   +-------------------------------------------------------------------+   |   |
 |   |   |   |                                                 |                         |   |   |
 |   |   |   +-------------------------------------------------|-------------------------+   |   |
@@ -99,32 +100,40 @@ A solução foi estruturada no modelo **IaaS (Infrastructure as a Service)** na 
    - Em vez de gravar dados do banco no disco raiz volátil da EC2, provisionou-se um **volume EBS independente** (`aws_ebs_volume.mongo_data`, 10 GB gp3 criptografado) anexado via `aws_volume_attachment`.
    - O script `user_data` detecta o volume secundário, formata-o com `ext4` na primeira inicialização, monta-o em `/mnt/mongo-data` e o vincula ao volume do Docker (`saas-mongo-data`).
    - **Garantia de sobrevivência**: Caso a instância EC2 seja recriada ou substituída (ex: atualização de `user_data`), o volume EBS desacoplado permanece intacto na AWS e é montado pela nova instância preservando 100% dos dados dos locatários.
+4. **Isolamento de Rede em Duas Camadas no Docker Compose**:
+   - Em vez de uma bridge única genérica, o `docker-compose.yml` estrutura a comunicação em duas redes independentes: `saas-frontend-network` (para recepção de tráfego na API) e `saas-backend-network` declarada com `internal: true`.
+   - O contêiner do MongoDB conecta-se **exclusivamente** à rede `internal: true` sem mapear portas para a internet, eliminando qualquer rota padrão de gateway externo e assegurando isolamento estrito da camada de dados.
 
 ---
 
 ## 3. Matriz de Responsabilidade Compartilhada
 
-A segurança e a operação na nuvem seguem o **Modelo de Responsabilidade Compartilhada da AWS**:
+A segurança, a operação e a resiliência na nuvem seguem o **Modelo de Responsabilidade Compartilhada da AWS**:
 
 ```
-+-----------------------------------------------------------------------------+
-|                     RESPONSABILIDADE DO CLIENTE / EQUIPE                    |
-+-----------------------------------------------------------------------------+
-| - Dados da aplicação, senhas criptografadas (bcrypt) e tokens JWT           |
-| - Controle de acesso por papéis (RBAC admin vs member) e isolamento lógico  |
-| - Configuração de firewall virtual (Security Groups e regras de porta)      |
-| - Sistema Operacional convidado (Amazon Linux 2023 - AL2023), patches e dnf |
-| - Configuração dos contêineres Docker, Dockerfile e dependências Node.js    |
-| - Gestão de segredos de ambiente (.env) e chave privada SSH (.pem)          |
-+-----------------------------------------------------------------------------+
-|                     RESPONSABILIDADE DA AWS (PROVEDOR)                      |
-+-----------------------------------------------------------------------------+
-| - Segurança física dos Data Centers (controles biométricos, energia, clima) |
-| - Hardware dos servidores e armazenamento físico (discos EBS)               |
-| - Virtualização (hipervisor Nitro / Xen) e infraestrutura de rede global   |
-| - Disponibilidade da região us-east-1 e zonas de disponibilidade            |
-+-----------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+|                          RESPONSABILIDADE DO CLIENTE / EQUIPE                           |
++-----------------------------------------------------------------------------------------+
+| - Dados da aplicação, senhas criptografadas (bcrypt) e tokens JWT                       |
+| - Controle de acesso por papéis (RBAC admin vs member) e isolamento lógico              |
+| - Configuração de firewall virtual (Security Groups e regras de porta restritas)        |
+| - Sistema Operacional convidado (Amazon Linux 2023 - AL2023), patches e dnf             |
+| - Configuração dos contêineres Docker, Dockerfile e dependências Node.js                |
+| - Gestão de segredos de ambiente (.env com chmod 600) e chave privada SSH (.pem)       |
+| - Resiliência e Alta Disponibilidade da aplicação (decisão mono-AZ vs multi-AZ,         |
+|   políticas de failover, backups e arquitetura de recuperação de desastres)             |
++-----------------------------------------------------------------------------------------+
+|                           RESPONSABILIDADE DA AWS (PROVEDOR)                            |
++-----------------------------------------------------------------------------------------+
+| - Segurança física dos Data Centers (controles biométricos, energia, climatização)     |
+| - Hardware dos servidores e armazenamento físico (discos EBS)                           |
+| - Virtualização (hipervisor Nitro) e infraestrutura de rede física global               |
+| - Disponibilidade da infraestrutura física subjacente das Zonas e Regiões da AWS       |
++-----------------------------------------------------------------------------------------+
 ```
+
+> [!NOTE]
+> Conforme o whitepaper de *Shared Responsibility Model for Resiliency* da AWS, o provedor assegura a disponibilidade física dos componentes de infraestrutura, mas a resiliência da aplicação depende das decisões de arquitetura do cliente (como a distribuição de réplicas em múltiplas AZs e estratégias de contingência). A topologia atual, por operar em Zona de Disponibilidade única visando o Free Tier, concentra o risco operacional na resiliência da zona escolhida (`us-east-1a`).
 
 ---
 
@@ -132,13 +141,14 @@ A segurança e a operação na nuvem seguem o **Modelo de Responsabilidade Compa
 
 ### 4.1. Escalabilidade Vertical vs. Escalabilidade Horizontal
 
-- **Cenário Atual (Vertical)**: A infraestrutura inicial adotou a instância `t3.micro` (2 vCPUs, 1 GB RAM) elegível ao plano gratuito da AWS na região `us-east-1`. Para aumento de demanda em curto prazo, a escalabilidade vertical é obtida alterando a variável `instance_type` no Terraform para tipos superiores (ex: `t3.small` ou `t3.medium`).
-- **Cenário de Produção (Horizontal)**: Para ambientes de grande porte, a arquitetura deve evoluir para múltiplas instâncias EC2 em sub-redes privadas distribuídas em diferentes Zonas de Disponibilidade (Multi-AZ), coordenadas por um **Auto Scaling Group (ASG)**.
+- **Cenário Atual (Vertical)**: A infraestrutura inicial adotou a instância `t3.micro` (2 vCPUs, 1 GB RAM) elegível ao plano gratuito da AWS na região `us-east-1`. Para aumento de demanda em curto prazo, a escalabilidade vertical é obtida alterando a variável `instance_type` no Terraform para tipos superiores (ex: `t3.small` ou `t3.medium`). Trata-se de um procedimento planejado que acarreta downtime momentâneo para redimensionamento da máquina virtual.
+- **Cenário de Produção (Horizontal)**: Para ambientes de grande porte, a arquitetura deve evoluir para múltiplas instâncias EC2 em sub-redes privadas distribuídas em diferentes Zonas de Disponibilidade (Multi-AZ), coordenadas por um **Auto Scaling Group (ASG)** e balanceadas por um Application Load Balancer.
 
-### 4.2. Elasticidade e Automação
+### 4.2. Automação de Inicialização (Bootstrapping) vs. Elasticidade
 
-A elasticidade refere-se à capacidade do sistema de provisionar e desprovisionar recursos computacionais de forma automática acompanhando as variações de carga:
-- No modelo de microsserviços em nuvem, o script [`user_data.sh.tftpl`](../terraform/scripts/user_data.sh.tftpl) garante elasticidade ao automatizar 100% da inicialização: qualquer nova instância criada pelo Terraform ou por um grupo de auto scaling baixa o código do GitHub, configura o ambiente Docker e inicia a API de forma autônoma sem intervenção humana.
+É essencial diferenciar conceitualmente a **automação de inicialização** da **elasticidade**:
+- **Automação de Inicialização (Bootstrapping)**: O script [`user_data.sh.tftpl`](../terraform/scripts/user_data.sh.tftpl) provê o bootstrapping completo e autônomo da máquina EC2 no momento da inicialização (instalação de pacotes via `dnf`, montagem automática do volume EBS independente, permissões restritas `0600` no `.env` e inicialização do Docker Compose). Essa automação elimina intervenções manuais na configuração da VM e serve como alicerce técnico obrigatório para provisionamentos escaláveis.
+- **Elasticidade Real (Requisito Teórico de IaaS)**: Conforme o material de IaaS, a elasticidade é definida estritamente como a capacidade do sistema de expandir e contrair capacidade computacional de forma **automática e dinâmica em resposta às flutuações de demanda em tempo de execução**. Como a arquitetura acadêmica atual opera em uma **única instância EC2 em uma única AZ**, sem Auto Scaling Group nem políticas de ajuste orientadas por métricas do CloudWatch, a solução **não é elástica**. O dimensionamento atual é estático/manual, servindo o bootstrapping como pré-requisito para habilitar elasticidade em uma futura fase com ASG.
 
 ### 4.3. Evolução Arquitetural Corporativa
 

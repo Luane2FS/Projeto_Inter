@@ -1,13 +1,64 @@
-# SaaS App — API Multitenant (Node.js + Express 5 + MongoDB)
+# Projeto_Inter — Aplicação SaaS Multitenant & Infraestrutura AWS
 
-API RESTful para aplicação SaaS multitenant com gerenciamento de planos no MongoDB (`freemium` e `premium`), autenticação JWT (`HS256`), controle de acesso baseado em papéis (`admin` / `member`), reserva atômica de vagas por plano e isolamento estrito entre locatários (tenants).
+Repositório oficial do Projeto Integrador do curso **Capacita — Computação em Nuvem**.
+
+Este projeto integra o desenvolvimento de uma **API RESTful SaaS Multitenant** (Node.js + Express 5 + MongoDB), o empacotamento com **Docker e Docker Compose** e o provisionamento automatizado de infraestrutura na nuvem **AWS utilizando Terraform (IaaS)**.
+
+---
+
+## Sumário
+- [Arquitetura Geral](#arquitetura-geral)
+- [Estrutura do Repositório](#estrutura-do-repositório)
+- [Requisitos](#requisitos)
+- [Execução Local com Docker](#execução-local-com-docker)
+- [Infraestrutura AWS com Terraform](#infraestrutura-aws-com-terraform)
+- [Testes e Validação](#testes-e-validação)
+
+---
+
+## Arquitetura Geral
+
+A solução adota uma estratégia em camadas para entrega de nuvem:
+1. **Infraestrutura como Serviço (IaaS)**: Provisionamento automatizado via **Terraform** na AWS (VPC `10.0.0.0/16`, Subnet pública `10.0.1.0/24`, Internet Gateway, Tabela de Rotas, Security Group restrito e Instância EC2 `t2.micro`).
+2. **Contêineres (CaaS / Empacotamento)**: **Docker e Docker Compose** orquestrando os serviços `saas-api` e `mongodb`, com isolamento de rede interna (`saas-internal-network`) e persistência de dados em volume nomeado (`saas-mongo-data`).
+3. **Software como Serviço (SaaS)**: Aplicação multitenant com planos `freemium` (até 3 usuários) e `premium`, autenticação JWT (`HS256`), controle de acesso por papéis (`admin`/`member`), isolamento lógico estrito e rate limiting.
+
+---
 
 ## Requisitos
 
+- **Git**
 - **Node.js** `>= 20.19.0`
-- **MongoDB** `>= 7.0` / `8.0`
+- **Docker** e **Docker Compose**
+- **Terraform** `>= 1.5.0` (para provisionamento AWS)
+- **AWS CLI** configurada (para deploy em nuvem)
 
-## Configuração e Execução
+---
+
+## Execução Local com Docker
+
+1. Suba os contêineres da aplicação e banco com um único comando:
+
+```bash
+docker compose up -d --build
+```
+
+2. Verifique o status dos serviços e healthcheck:
+
+```bash
+docker compose ps
+curl http://localhost:3000/health
+```
+
+3. Para encerrar:
+
+```bash
+docker compose down
+```
+
+---
+
+## Execução Manual / Desenvolvimento (sem Docker)
 
 1. Instale as dependências dentro da pasta `saas-app`:
 

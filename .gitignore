@@ -1,0 +1,42 @@
+# Dependências
+node_modules/
+.venv/
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!terraform.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Chaves SSH e Certificados
+*.pem
+*.key
+*.pub
+id_rsa*
+id_ed25519*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Estado local e segredos do Postman
+.postman/
+postman/environments/
+postman/globals/
+
+# Backups locais e temporários
+/backups/
+tmp/
+.DS_Store
+Thumbs.db

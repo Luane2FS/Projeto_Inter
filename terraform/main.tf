@@ -104,18 +104,18 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = [local.effective_api_ingress_cidr]
   }
 
-  # Regra de Entrada: HTTPS (Porta 443) para terminação TLS segura
+  # Regra de Entrada: HTTPS (Porta 443) - Pre-configurada para evolucao futura de terminacao TLS via ALB/ACM
   ingress {
-    description = "Acesso seguro HTTPS para a API"
+    description = "HTTPS pre-configurado para futura terminacao TLS via ALB (prototipo opera em HTTP restrito)"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = [local.effective_api_ingress_cidr]
   }
 
-  # Regra de Entrada: HTTP (Porta 80) para redirecionamento seguro
+  # Regra de Entrada: HTTP (Porta 80) - Pre-configurada para futuro redirecionamento TLS via ALB
   ingress {
-    description = "Acesso HTTP para redirecionamento TLS"
+    description = "HTTP pre-configurado para futuro redirecionamento TLS (prototipo opera em HTTP restrito)"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -214,6 +214,11 @@ resource "aws_instance" "app_server" {
   vpc_security_group_ids      = [aws_security_group.app_sg.id]
   associate_public_ip_address = true
   key_name                    = var.create_ssh_key ? aws_key_pair.generated_key[0].key_name : var.existing_key_name
+
+  # Modo de créditos de CPU definido como standard para prevenir custos adicionais no Free Tier
+  credit_specification {
+    cpu_credits = "standard"
+  }
 
   # Armazenamento em bloco para o sistema operacional AL2023
   root_block_device {

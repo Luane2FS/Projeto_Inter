@@ -28,10 +28,10 @@ A solução adota uma estratégia em camadas para entrega de nuvem:
 
 1. **Infraestrutura como Serviço (IaaS)**: Provisionamento automatizado via **Terraform** na AWS:
    - **Rede Virtual**: VPC dedicada (`10.0.0.0/16`), Sub-rede pública (`10.0.1.0/24`) na Zona de Disponibilidade `us-east-1a`, Internet Gateway e Tabela de Rotas com saída pública.
-   - **Segurança de Borda**: Security Group aplicando o **princípio do menor privilégio** (`api_ingress_cidr`), restringindo acessos administrativos (SSH - porta 22) e da API (porta 3000) ao IP do operador por padrão, com regras preparadas para TLS (portas 443 e 80).
-   - **Computação**: Instância EC2 **`t3.micro`** (2 vCPUs, 1 GB RAM) com **Amazon Linux 2023 (AL2023)** elegível ao AWS Free Tier.
-   - **Armazenamento Desacoplado**: Volume EBS independente de 10 GB (`gp3`, criptografado) formatado em `ext4` e montado em `/mnt/mongo-data`, garantindo que os dados do MongoDB persistam mesmo em caso de substituição ou destruição da instância EC2.
-   - **Automação de Inicialização (Bootstrapping)**: Script `user_data.sh.tftpl` que instala Docker via `dnf`, monta o disco EBS persistente, gera credenciais fortes com permissão restrita `0600` para o `.env` e sobe os serviços sem intervenção manual.
+   - **Segurança de Borda**: Security Group aplicando o **princípio do menor privilégio** (`api_ingress_cidr`), restringindo acessos administrativos (SSH - porta 22) e da API (porta 3000) ao IP do operador por padrão. O protótipo acadêmico opera em protocolo HTTP, com as portas 443 e 80 pré-alocadas no Security Group para futura evolução com Application Load Balancer (ALB) e terminação TLS.
+   - **Computação**: Instância EC2 **`t3.micro`** (2 vCPUs, 1 GB RAM com Amazon Linux 2023 - AL2023). A elegibilidade ao AWS Free Tier (750h/mês) aplica-se a contas nos primeiros 12 meses; a instância é configurada com `cpu_credits = "standard"` para prevenir cobranças por uso excedente de CPU (modo *unlimited*).
+   - **Armazenamento Desacoplado**: Volume EBS independente de 10 GB (`gp3`, criptografado) com montagem automática fail-fast e permissões restritas `0700` (UID 999). Preserva dados entre reinicializações e substituições da instância EC2, exigindo snapshots periódicos (AWS Backup/DLM) para proteção definitiva contra desastres.
+   - **Automação de Inicialização (Bootstrapping)**: Script `user_data.sh.tftpl` que instala Docker via `dnf`, monta o disco EBS persistente com validação estrita, gera credenciais fortes com permissão restrita `0600` para o `.env` e sobe os serviços sem intervenção manual.
 
 2. **Conteinerização sobre IaaS**: **Docker e Docker Compose** executando os serviços sobre uma **topologia de redes em duas camadas**:
    - `saas-frontend-network` (bridge pública): comunica a porta de entrada da API (`saas-api`) com o host.
@@ -181,10 +181,10 @@ O diretório `terraform/` contém a automação completa da infraestrutura na nu
 ### Parâmetros Configuráveis (`terraform/variables.tf`)
 
 * `aws_region`: Região da AWS (padrão: `us-east-1`).
-* `instance_type`: Tipo de instância EC2 (padrão: **`t3.micro`** com 2 vCPUs e 1 GB RAM, elegível ao Free Tier).
+* `instance_type`: Tipo de instância EC2 (padrão: **`t3.micro`** com 2 vCPUs e 1 GB RAM, elegível ao Free Tier nos primeiros 12 meses de novas contas e com CPU em modo standard).
 * `ami_id`: AMI específica (padrão vazio: resolve automaticamente a AMI oficial mais recente do **Amazon Linux 2023**).
 * `mongo_data_volume_size`: Tamanho em GB do volume EBS independente (padrão: `10` GB).
-* `api_ingress_cidr`: CIDR permitido para acessar a API (padrão restrito ao IP do operador `/32` para proteção do tráfego).
+* `api_ingress_cidr`: CIDR permitido para acessar a API em HTTP (padrão restrito ao IP do operador `/32` para proteção do tráfego).
 
 ### Passo a Passo de Provisionamento
 
@@ -218,18 +218,25 @@ Ao final da execução, o Terraform exibirá os outputs com o endereço IP públ
 Outputs:
 api_endpoint           = "http://<IP_PUBLICO_EC2>:3000"
 api_healthcheck_url    = "http://<IP_PUBLICO_EC2>:3000/health"
-ec2_instance_id        = "i-089bd54aa9639c3bf"
-ec2_public_ip          = "35.170.55.119"
-mongo_data_volume_id   = "vol-083972d403ed9c951"
-ssh_connection_command = "ssh -i ./terraform/projeto-inter-capacita-key.pem ec2-user@35.170.55.119"
+api_ingress_cidr       = "<SEU_IP_ADMIN>/32"
+ec2_instance_id        = "<ID_DA_INSTANCIA_EC2>"
+ec2_public_dns         = "<DNS_PUBLICO_EC2>"
+ec2_public_ip          = "<IP_PUBLICO_EC2>"
+mongo_data_volume_id   = "<ID_DO_VOLUME_EBS>"
+ssh_connection_command = "ssh -i ./projeto-inter-capacita-key.pem ec2-user@<IP_PUBLICO_EC2>"
 ```
 
 5. **Acesso Remoto via SSH**:
 O par de chaves RSA 2048 é gerado dinamicamente e salvo localmente com permissão `0600`. Conecte-se à instância:
 
-```bash
-ssh -i projeto-inter-capacita-key.pem ec2-user@<IP_PUBLICO_EC2>
-```
+- **Se estiver dentro do diretório `terraform/`**:
+  ```bash
+  ssh -i projeto-inter-capacita-key.pem ec2-user@<IP_PUBLICO_EC2>
+  ```
+- **Se estiver no diretório raiz do projeto**:
+  ```bash
+  ssh -i terraform/projeto-inter-capacita-key.pem ec2-user@<IP_PUBLICO_EC2>
+  ```
 
 6. **Desprovisionamento (Limpeza de Recursos)**:
 Após finalizar os testes e a avaliação, destrua toda a infraestrutura para evitar custos:

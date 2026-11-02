@@ -54,33 +54,44 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-if [ -n "$EBS_DEVICE" ]; then
-  # Formata com ext4 apenas se for a primeira vez (sem sistema de arquivos existente)
-  if ! blkid "$EBS_DEVICE" > /dev/null 2>&1; then
-    echo "[INFO] Formatando novo volume EBS ($EBS_DEVICE) com ext4..."
-    mkfs.ext4 -m 1 "$EBS_DEVICE"
-  else
-    echo "[INFO] Sistema de arquivos existente detectado em $EBS_DEVICE. Preservando dados anteriores do banco!"
-  fi
-
-  mount "$EBS_DEVICE" "$DATA_MOUNT"
-  chmod 777 "$DATA_MOUNT"
-
-  UUID=$(blkid -s UUID -o value "$EBS_DEVICE")
-  if ! grep -q "$UUID" /etc/fstab; then
-    echo "UUID=$UUID $DATA_MOUNT ext4 defaults,nofail 0 2" >> /etc/fstab
-  fi
-
-  # Vincula o diretório do volume nomeado do Docker ao volume EBS persistente
-  mkdir -p /var/lib/docker/volumes/saas-mongo-data/_data
-  mount --bind "$DATA_MOUNT" /var/lib/docker/volumes/saas-mongo-data/_data
-  if ! grep -q "/var/lib/docker/volumes/saas-mongo-data/_data" /etc/fstab; then
-    echo "$DATA_MOUNT /var/lib/docker/volumes/saas-mongo-data/_data none bind 0 0" >> /etc/fstab
-  fi
-  echo "[INFO] Volume EBS persistente desacoplado montado com sucesso e vinculado ao Docker."
-else
-  echo "[WARN] Volume EBS dedicado não detectado no tempo limite. Prosseguindo com volume Docker padrão no disco raiz."
+# Falha crítica obrigatória caso o disco EBS desacoplado não seja encontrado
+# Impede terminantemente a execução do MongoDB no disco raiz efêmero da instância
+if [ -z "$EBS_DEVICE" ]; then
+  echo "======================================================================"
+  echo "[FATAL] Falha crítica: Volume EBS desacoplado para o MongoDB não foi detectado."
+  echo "[FATAL] A inicialização foi abortada para garantir a integridade dos dados e impedir o uso do disco raiz."
+  echo "======================================================================"
+  exit 1
 fi
+
+# Formata com ext4 apenas se for a primeira vez (sem sistema de arquivos existente)
+if ! blkid "$EBS_DEVICE" > /dev/null 2>&1; then
+  echo "[INFO] Formatando novo volume EBS ($EBS_DEVICE) com ext4..."
+  mkfs.ext4 -m 1 "$EBS_DEVICE"
+else
+  echo "[INFO] Sistema de arquivos existente detectado em $EBS_DEVICE. Preservando dados anteriores do banco!"
+fi
+
+mount "$EBS_DEVICE" "$DATA_MOUNT"
+
+# Restringe permissões: posse para UID:GID 999 (usuário mongodb do contêiner) e acesso restrito 0700
+chown -R 999:999 "$DATA_MOUNT"
+chmod 700 "$DATA_MOUNT"
+
+UUID=$(blkid -s UUID -o value "$EBS_DEVICE")
+if ! grep -q "$UUID" /etc/fstab; then
+  echo "UUID=$UUID $DATA_MOUNT ext4 defaults,nofail 0 2" >> /etc/fstab
+fi
+
+# Vincula o diretório do volume nomeado do Docker ao volume EBS persistente
+mkdir -p /var/lib/docker/volumes/saas-mongo-data/_data
+mount --bind "$DATA_MOUNT" /var/lib/docker/volumes/saas-mongo-data/_data
+chown -R 999:999 /var/lib/docker/volumes/saas-mongo-data/_data
+chmod 700 /var/lib/docker/volumes/saas-mongo-data/_data
+if ! grep -q "/var/lib/docker/volumes/saas-mongo-data/_data" /etc/fstab; then
+  echo "$DATA_MOUNT /var/lib/docker/volumes/saas-mongo-data/_data none bind 0 0" >> /etc/fstab
+fi
+echo "[INFO] Volume EBS persistente desacoplado montado com sucesso e vinculado ao Docker com permissões restritas (0700, UID 999)."
 
 # 4. Instalar o plugin Docker Compose v2 oficial
 echo "[INFO] 4/6 Instalando Docker Compose v2..."

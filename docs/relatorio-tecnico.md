@@ -93,13 +93,13 @@ A solução foi estruturada como um **produto SaaS hospedado sobre infraestrutur
 
 1. **Migração para Amazon Linux 2023 (AL2023)**: O projeto migrou do Amazon Linux 2 (AL2) — cujo suporte oficial da AWS foi descontinuado em 2026 — para o **Amazon Linux 2023**, garantindo kernel 6.1+, gerenciamento moderno de pacotes com `dnf` e suporte a longo prazo da AWS.
 2. **Mitigação de Tráfego HTTP em Texto Claro e Proteção de Credenciais**:
-   - Para evitar a exposição de credenciais (senhas e tokens JWT) a ataques de interceptação (*man-in-the-middle*) em redes públicas, o Security Group **não** deixa a porta HTTP aberta globalmente (`0.0.0.0/0`).
-   - A variável `api_ingress_cidr` restringe por padrão o acesso da API e do SSH exclusivamente ao endereço IPv4 do administrador/avaliador (`var.admin_ssh_ip`), aplicando o princípio do menor privilégio.
-   - Foram abertas regras para as portas 80 e 443, preparando a infraestrutura para terminação TLS.
-3. **Persistência de Dados com EBS Desacoplado**:
+   - O protótipo acadêmico atual opera via protocolo **HTTP** na porta configurada (`var.app_port`). As portas 80 e 443 foram pré-configuradas no Security Group para preparar a infraestrutura para terminação TLS futura via Application Load Balancer (ALB) e certificados gerenciados pelo AWS Certificate Manager (ACM).
+   - Para mitigar o risco de interceptação de credenciais e tokens em trânsito HTTP durante testes e avaliações, a variável `api_ingress_cidr` restringe por padrão o acesso da API e do SSH exclusivamente ao endereço IPv4 do operador (`var.admin_ssh_ip`), aplicando o princípio do menor privilégio e eliminando a exposição pública indiscriminada (`0.0.0.0/0`).
+3. **Persistência de Dados com EBS Desacoplado e Princípio do Menor Privilégio**:
    - Em vez de gravar dados do banco no disco raiz volátil da EC2, provisionou-se um **volume EBS independente** (`aws_ebs_volume.mongo_data`, 10 GB gp3 criptografado) anexado via `aws_volume_attachment`.
-   - O script `user_data` detecta o volume secundário, formata-o com `ext4` na primeira inicialização, monta-o em `/mnt/mongo-data` e o vincula ao volume do Docker (`saas-mongo-data`).
-   - **Garantia de sobrevivência**: Caso a instância EC2 seja recriada ou substituída (ex: atualização de `user_data`), o volume EBS desacoplado permanece intacto na AWS e é montado pela nova instância preservando 100% dos dados dos locatários.
+   - O script `user_data` detecta o volume secundário, formata-o com `ext4` na primeira inicialização, monta-o em `/mnt/mongo-data`, restringe as permissões a `0700` com posse exclusiva do usuário do MongoDB (`chown -R 999:999`) e o vincula ao volume do Docker (`saas-mongo-data`).
+   - **Fail-Fast de Inicialização**: O script aborta a inicialização com código de erro fatal (`exit 1`) caso o volume EBS não seja detectado no tempo limite, impedindo terminantemente que o banco seja inicializado no disco raiz efêmero da VM.
+   - **Persistência vs. Backup**: O volume EBS independente garante que os dados dos locatários sobrevivam à reinicialização ou substituição da máquina virtual EC2. Contudo, **um volume EBS isolado não constitui por si só uma política de backup**, pois permanece vulnerável a falhas na Zona de Disponibilidade e é removido caso a infraestrutura seja destruída (`terraform destroy` com `final_snapshot = false`). Para resiliência corporativa, são necessários snapshots programados via AWS Backup/DLM ou replicação em banco de dados gerenciado.
 4. **Isolamento de Rede em Duas Camadas no Docker Compose**:
    - Em vez de uma bridge única genérica, o `docker-compose.yml` estrutura a comunicação em duas redes independentes: `saas-frontend-network` (para recepção de tráfego na API) e `saas-backend-network` declarada com `internal: true`.
    - O contêiner do MongoDB conecta-se **exclusivamente** à rede `internal: true` sem mapear portas para a internet, eliminando qualquer rota padrão de gateway externo e assegurando isolamento estrito da camada de dados.
@@ -141,7 +141,7 @@ A segurança, a operação e a resiliência na nuvem seguem o **Modelo de Respon
 
 ### 4.1. Escalabilidade Vertical vs. Escalabilidade Horizontal
 
-- **Cenário Atual (Vertical)**: A infraestrutura inicial adotou a instância `t3.micro` (2 vCPUs, 1 GB RAM) elegível ao plano gratuito da AWS na região `us-east-1`. Para aumento de demanda em curto prazo, a escalabilidade vertical é obtida alterando a variável `instance_type` no Terraform para tipos superiores (ex: `t3.small` ou `t3.medium`). Trata-se de um procedimento planejado que acarreta downtime momentâneo para redimensionamento da máquina virtual.
+- **Cenário Atual (Vertical)**: A infraestrutura inicial adotou a instância `t3.micro` (2 vCPUs, 1 GB RAM). A elegibilidade ao AWS Free Tier (750 horas/mês) aplica-se a contas nos primeiros 12 meses de cadastro. Como as instâncias da família T3 operam por padrão no modo *unlimited* (o que pode acarretar custos adicionais caso o consumo de CPU supere a linha de base), a configuração do Terraform fixou explicitamente o modo de créditos como `standard` (`credit_specification { cpu_credits = "standard" }`). Para aumento de demanda em curto prazo, a escalabilidade vertical é obtida alterando a variável `instance_type` no Terraform para tipos superiores (ex: `t3.small` ou `t3.medium`), acarretando downtime planejado momentâneo para redimensionamento da máquina virtual.
 - **Cenário de Produção (Horizontal)**: Para ambientes de grande porte, a arquitetura deve evoluir para múltiplas instâncias EC2 em sub-redes privadas distribuídas em diferentes Zonas de Disponibilidade (Multi-AZ), coordenadas por um **Auto Scaling Group (ASG)** e balanceadas por um Application Load Balancer.
 
 ### 4.2. Automação de Inicialização (Bootstrapping) vs. Elasticidade
@@ -167,4 +167,4 @@ O projeto cumpriu integralmente os objetivos propostos nas Unidades 01, 04 e 05 
 1. Uma **aplicação SaaS multitenant robusta**, com modelos relacionais de plano, isolamento lógico e controle de taxas de requisição.
 2. **Conteinerização eficiente via Docker Multi-Stage**, garantindo imagens enxutas e seguras em ambiente de produção.
 3. **Provisionamento 100% reproduzível via Terraform**, criando a infraestrutura de rede e computação na AWS sem necessidade de cliques manuais no console.
-4. **Alinhamento conceitual estrito**, fundamentando a entrega nos modelos de serviço IaaS, CaaS e SaaS, na matriz de responsabilidade compartilhada e nas boas práticas de segurança em nuvem.
+4. **Alinhamento conceitual estrito**, fundamentando a entrega no modelo de serviço **SaaS hospedado em IaaS com conteinerização Docker Compose**, na matriz de responsabilidade compartilhada e nas boas práticas de segurança em nuvem.

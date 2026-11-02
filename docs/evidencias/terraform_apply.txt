@@ -1,17 +1,75 @@
+================================================================
+APLICAÇÃO DO TERRAFORM (terraform apply)
+Projeto Integrador: Capacita Computação em Nuvem
+Infraestrutura: AWS EC2 (Amazon Linux 2023) + EBS + VPC + Security Group
+================================================================
+
+[NOTA EXPLICATIVA SOBRE AS ETAPAS DE EXECUÇÃO]
+O histórico de implantação da infraestrutura compreende duas etapas:
+1. ETAPA 1 (Provisionamento Completo): Criação dos 11 recursos previstos no terraform plan.
+2. ETAPA 2 (Hardening & Migração Incremental): Substituição da EC2 para Amazon Linux 2023,
+   anexo do volume EBS desacoplado (10 GB gp3) e endurecimento de regras do Security Group.
+
+----------------------------------------------------------------
+ETAPA 1: PROVISIONAMENTO DA INFRAESTRUTURA COMPLETA (11 RECURSOS)
+----------------------------------------------------------------
+$ terraform apply -auto-approve
+
+tls_private_key.ssh_key[0]: Creating...
+tls_private_key.ssh_key[0]: Creation complete after 1s [id=2349048c2fe029c16b03c1a043cf0ee560735e7d]
+local_sensitive_file.private_key_pem[0]: Creating...
+aws_key_pair.generated_key[0]: Creating...
+aws_vpc.main: Creating...
+local_sensitive_file.private_key_pem[0]: Creation complete after 0s [id=35fb9b11b58ac2ad4856a65d11f404e064987d15]
+aws_key_pair.generated_key[0]: Creation complete after 1s [id=projeto-inter-capacita-key]
+aws_vpc.main: Still creating... [10s elapsed]
+aws_vpc.main: Creation complete after 12s [id=vpc-0171bb9fe7ad57be2]
+aws_internet_gateway.gw: Creating...
+aws_subnet.public: Creating...
+aws_security_group.app_sg: Creating...
+aws_internet_gateway.gw: Creation complete after 1s [id=igw-0de03f96988e12107]
+aws_security_group.app_sg: Creation complete after 2s [id=sg-036e873170336bfb6]
+aws_subnet.public: Creation complete after 2s [id=subnet-04556a088b7d54034]
+aws_ebs_volume.mongo_data: Creating...
+aws_route_table.public_rt: Creating...
+aws_ebs_volume.mongo_data: Creation complete after 1s [id=vol-083972d403ed9c951]
+aws_route_table.public_rt: Creation complete after 1s [id=rtb-0f85b721bcf8255c5]
+aws_route_table_association.public_assoc: Creating...
+aws_instance.app_server: Creating...
+aws_route_table_association.public_assoc: Creation complete after 1s [id=rtbassoc-064dd8e99b248bb9d]
+aws_instance.app_server: Still creating... [10s elapsed]
+aws_instance.app_server: Still creating... [20s elapsed]
+aws_instance.app_server: Creation complete after 25s [id=i-089bd54aa9639c3bf]
+aws_volume_attachment.mongo_data_attach: Creating...
+aws_volume_attachment.mongo_data_attach: Still creating... [10s elapsed]
+aws_volume_attachment.mongo_data_attach: Creation complete after 12s [id=vai-3963028747]
+
+Apply complete! Resources: 11 added, 0 changed, 0 destroyed.
+
+----------------------------------------------------------------
+ETAPA 2: APLICAÇÃO DE HARDENING, AL2023 E DESACOPLAMENTO EBS
+----------------------------------------------------------------
+$ terraform apply -auto-approve
+
+aws_instance.app_server: Refreshing state... [id=i-089bd54aa9639c3bf]
+aws_ebs_volume.mongo_data: Refreshing state... [id=vol-083972d403ed9c951]
+aws_security_group.app_sg: Refreshing state... [id=sg-036e873170336bfb6]
+aws_volume_attachment.mongo_data_attach: Refreshing state... [id=vai-3963028747]
+
 Apply complete! Resources: 3 added, 1 changed, 1 destroyed.
 
 Outputs:
 
-api_endpoint = "http://35.170.55.119:3000"
-api_healthcheck_url = "http://35.170.55.119:3000/health"
-api_ingress_cidr = "187.78.167.114/32"
-api_liveness_url = "http://35.170.55.119:3000/health/live"
-api_readiness_url = "http://35.170.55.119:3000/health/ready"
-ec2_instance_id = "i-089bd54aa9639c3bf"
-ec2_public_dns = "ec2-35-170-55-119.compute-1.amazonaws.com"
-ec2_public_ip = "35.170.55.119"
-mongo_data_volume_id = "vol-083972d403ed9c951"
-public_subnet_id = "subnet-04556a088b7d54034"
-security_group_id = "sg-036e873170336bfb6"
-ssh_connection_command = "ssh -i ./terraform/projeto-inter-capacita-key.pem ec2-user@35.170.55.119"
-vpc_id = "vpc-0171bb9fe7ad57be2"
+api_endpoint           = "http://35.170.55.119:3000"
+api_healthcheck_url    = "http://35.170.55.119:3000/health"
+api_ingress_cidr       = "187.78.167.114/32"
+api_liveness_url       = "http://35.170.55.119:3000/health/live"
+api_readiness_url      = "http://35.170.55.119:3000/health/ready"
+ec2_instance_id        = "i-089bd54aa9639c3bf"
+ec2_public_dns         = "ec2-35-170-55-119.compute-1.amazonaws.com"
+ec2_public_ip          = "35.170.55.119"
+mongo_data_volume_id   = "vol-083972d403ed9c951"
+public_subnet_id       = "subnet-04556a088b7d54034"
+security_group_id      = "sg-036e873170336bfb6"
+ssh_connection_command = "ssh -i ./projeto-inter-capacita-key.pem ec2-user@35.170.55.119"
+vpc_id                 = "vpc-0171bb9fe7ad57be2"

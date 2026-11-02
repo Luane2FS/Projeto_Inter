@@ -48,7 +48,7 @@ variable "availability_zone" {
 # ------------------------------------------------------------------------------
 
 variable "instance_type" {
-  description = "Tipo da instância EC2 (Free Tier: t3.micro em us-east-1)"
+  description = "Tipo da instância EC2 (padrão: t3.micro). A elegibilidade ao AWS Free Tier (750h/mês) aplica-se a contas nos primeiros 12 meses de cadastro. O modo de créditos de CPU é configurado como 'standard' em main.tf para prevenir cobranças adicionais de consumo de CPU excedente."
   type        = string
   default     = "t3.micro"
 }

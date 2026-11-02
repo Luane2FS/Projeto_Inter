@@ -35,11 +35,11 @@ output "ec2_public_dns" {
 
 output "ssh_connection_command" {
   description = "Comando pronto para conexão remota via SSH utilizando a chave privada gerada"
-  value       = var.create_ssh_key ? "ssh -i ./terraform/${var.project_name}-key.pem ec2-user@${aws_instance.app_server.public_ip}" : "ssh -i <sua-chave>.pem ec2-user@${aws_instance.app_server.public_ip}"
+  value       = var.create_ssh_key ? "ssh -i ./${var.project_name}-key.pem ec2-user@${aws_instance.app_server.public_ip}" : "ssh -i <sua-chave>.pem ec2-user@${aws_instance.app_server.public_ip}"
 }
 
 output "api_endpoint" {
-  description = "URL base da API SaaS para testes no Postman ou no navegador"
+  description = "URL base da API SaaS em HTTP (protótipo acadêmico com tráfego protegido via restrição de CIDR no Security Group; terminação HTTPS via ALB/ACM prevista para produção)"
   value       = "http://${aws_instance.app_server.public_ip}:${var.app_port}"
 }
 

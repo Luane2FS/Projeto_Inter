@@ -37,7 +37,7 @@ COPY --chown=node:node models/ ./models/
 COPY --chown=node:node routes/ ./routes/
 COPY --chown=node:node services/ ./services/
 
-# Expor a porta da API
+# Metadado documental da porta padrão da imagem (a porta em execução é parametrizada em runtime via $PORT)
 EXPOSE 3000
 
 # Verificação de integridade (Healthcheck) nativo do container

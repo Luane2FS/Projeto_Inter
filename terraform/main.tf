@@ -71,7 +71,7 @@ resource "aws_route_table_association" "public_assoc" {
 # ------------------------------------------------------------------------------
 # 5. Security Group (Firewall Virtual com Regras de Entrada e Saída)
 # - Porta 22 (SSH): Restrito exclusivamente ao IP do administrador (curl -4 ifconfig.me)
-# - Porta 3000 (API SaaS): Liberado publicamente para requisições do Postman/Clientes
+# - Porta da API (var.app_port, padrão 3000): Liberada publicamente para requisições do Postman/Clientes
 # - Saída irrestrita (Egress 0.0.0.0/0) para download de pacotes e contêineres Docker
 # ------------------------------------------------------------------------------
 resource "aws_security_group" "app_sg" {
@@ -88,9 +88,9 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = [var.admin_ssh_ip]
   }
 
-  # Regra de Entrada: API SaaS Multitenant (Porta 3000)
+  # Regra de Entrada: API SaaS Multitenant (Porta configurável via var.app_port)
   ingress {
-    description = "Acesso a API SaaS Express/Node.js"
+    description = "Acesso a API SaaS Express/Node.js na porta configurada"
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"

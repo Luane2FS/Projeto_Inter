@@ -43,6 +43,16 @@ output "api_endpoint" {
   value       = "http://${aws_instance.app_server.public_ip}:${var.app_port}"
 }
 
+output "api_ingress_cidr" {
+  description = "Bloco CIDR com permissão de acesso à API (mitigação contra exposição de HTTP em texto claro)"
+  value       = local.effective_api_ingress_cidr
+}
+
+output "mongo_data_volume_id" {
+  description = "Identificador do volume EBS dedicado e desacoplado para armazenamento persistente do MongoDB"
+  value       = aws_ebs_volume.mongo_data.id
+}
+
 output "api_healthcheck_url" {
   description = "URL consolidada de verificação de integridade (Health Check: status e dependências)"
   value       = "http://${aws_instance.app_server.public_ip}:${var.app_port}/health"

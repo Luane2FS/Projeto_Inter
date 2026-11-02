@@ -54,9 +54,21 @@ variable "instance_type" {
 }
 
 variable "ami_id" {
-  description = "ID específico da AMI Amazon Linux 2 (opcional conforme slide 6; se vazio, busca automaticamente a AMI mais recente)"
+  description = "ID específico da AMI Amazon Linux 2023 (AL2023) (opcional; se vazio, busca automaticamente a AMI AL2023 mais recente)"
   type        = string
   default     = ""
+}
+
+variable "api_ingress_cidr" {
+  description = "Bloco CIDR com permissão para acessar a API. Por segurança contra tráfego HTTP em texto claro durante demonstrações/testes, o padrão restringe ao IP administrativo (var.admin_ssh_ip). Para liberar publicamente, utilize 0.0.0.0/0."
+  type        = string
+  default     = ""
+}
+
+variable "mongo_data_volume_size" {
+  description = "Tamanho em GB do volume EBS dedicado e desacoplado para dados persistentes do MongoDB"
+  type        = number
+  default     = 10
 }
 
 variable "admin_ssh_ip" {

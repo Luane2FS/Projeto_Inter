@@ -70,10 +70,16 @@ resource "aws_route_table_association" "public_assoc" {
 
 # ------------------------------------------------------------------------------
 # 5. Security Group (Firewall Virtual com Regras de Entrada e Saída)
-# - Porta 22 (SSH): Restrito exclusivamente ao IP do administrador (curl -4 ifconfig.me)
-# - Porta da API (var.app_port, padrão 3000): Liberada publicamente para requisições do Postman/Clientes
+# - Porta 22 (SSH): Restrito exclusivamente ao IP do administrador
+# - Porta da API (var.app_port): Restrita ao IP administrativo por padrão para
+#   mitigar o risco de tráfego HTTP em texto claro durante avaliações/testes
+# - Portas 80 e 443: Habilitadas para terminação TLS / proxy reverso seguro
 # - Saída irrestrita (Egress 0.0.0.0/0) para download de pacotes e contêineres Docker
 # ------------------------------------------------------------------------------
+locals {
+  effective_api_ingress_cidr = var.api_ingress_cidr != "" ? var.api_ingress_cidr : var.admin_ssh_ip
+}
+
 resource "aws_security_group" "app_sg" {
   name        = "${var.project_name}-sg"
   description = "Security Group com acesso SSH restrito ao IP do admin e porta da API liberada"
@@ -89,12 +95,31 @@ resource "aws_security_group" "app_sg" {
   }
 
   # Regra de Entrada: API SaaS Multitenant (Porta configurável via var.app_port)
+  # Restrita ao IP administrativo para proteger credenciais e tokens em trânsito HTTP
   ingress {
-    description = "Acesso a API SaaS Express/Node.js na porta configurada"
+    description = "Acesso a API SaaS Express restrito para mitigacao de HTTP em texto claro"
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [local.effective_api_ingress_cidr]
+  }
+
+  # Regra de Entrada: HTTPS (Porta 443) para terminação TLS segura
+  ingress {
+    description = "Acesso seguro HTTPS para a API"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [local.effective_api_ingress_cidr]
+  }
+
+  # Regra de Entrada: HTTP (Porta 80) para redirecionamento seguro
+  ingress {
+    description = "Acesso HTTP para redirecionamento TLS"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [local.effective_api_ingress_cidr]
   }
 
   # Regra de Saida: Acesso irrestrito a internet para instalacao de pacotes e imagens Docker
@@ -136,17 +161,17 @@ resource "local_sensitive_file" "private_key_pem" {
 }
 
 # ------------------------------------------------------------------------------
-# 7. Resolução da AMI Oficial Amazon Linux 2
-# Permite informar a AMI via var.ami_id (slide 6) ou resolver dinamicamente a mais recente
+# 7. Resolução da AMI Oficial Amazon Linux 2023 (AL2023)
+# Migração oficial do Amazon Linux 2 (cujo suporte terminou na AWS) para AL2023
 # ------------------------------------------------------------------------------
-data "aws_ami" "amazon_linux_2" {
+data "aws_ami" "amazon_linux_2023" {
   count       = var.ami_id == "" ? 1 : 0
   most_recent = true
   owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-2023.*-x86_64"]
   }
 
   filter {
@@ -156,20 +181,43 @@ data "aws_ami" "amazon_linux_2" {
 }
 
 # ------------------------------------------------------------------------------
-# 8. Instância EC2 (Computação Virtual na Nuvem)
-# Máquina t2.micro elegível ao Free Tier com provisionamento automatizado de Docker
+# 8. Volume EBS Persistente Desacoplado para Dados do MongoDB
+# Mantém os dados preservados independentemente do ciclo de vida da instância EC2
+# ------------------------------------------------------------------------------
+resource "aws_ebs_volume" "mongo_data" {
+  availability_zone = aws_subnet.public.availability_zone
+  size              = var.mongo_data_volume_size
+  type              = "gp3"
+  encrypted         = true
+
+  tags = {
+    Name        = "${var.project_name}-mongo-data-ebs"
+    Environment = var.environment
+    Project     = var.project_name
+  }
+}
+
+resource "aws_volume_attachment" "mongo_data_attach" {
+  device_name = "/dev/xvdf"
+  volume_id   = aws_ebs_volume.mongo_data.id
+  instance_id = aws_instance.app_server.id
+}
+
+# ------------------------------------------------------------------------------
+# 9. Instância EC2 (Computação Virtual na Nuvem)
+# Máquina t3.micro elegível ao Free Tier com provisionamento automatizado de Docker
 # ------------------------------------------------------------------------------
 resource "aws_instance" "app_server" {
-  ami                         = var.ami_id != "" ? var.ami_id : data.aws_ami.amazon_linux_2[0].id
+  ami                         = var.ami_id != "" ? var.ami_id : data.aws_ami.amazon_linux_2023[0].id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.public.id
   vpc_security_group_ids      = [aws_security_group.app_sg.id]
   associate_public_ip_address = true
   key_name                    = var.create_ssh_key ? aws_key_pair.generated_key[0].key_name : var.existing_key_name
 
-  # Armazenamento em bloco persistente EBS para o sistema operacional e contêineres
+  # Armazenamento em bloco para o sistema operacional AL2023
   root_block_device {
-    volume_type           = "gp2"
+    volume_type           = "gp3"
     volume_size           = 20
     delete_on_termination = true
 

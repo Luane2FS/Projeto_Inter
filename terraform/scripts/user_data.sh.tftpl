@@ -17,29 +17,73 @@ echo "[INFO] Repositório Alvo: ${github_repo_url}"
 echo "[INFO] Data e Hora: $(date)"
 echo "======================================================================"
 
-# 1. Atualizar repositórios e pacotes do sistema operacional
-echo "[INFO] 1/5 Atualizando pacotes do sistema..."
-yum update -y
-
-# 2. Instalar Docker, Git e utilitários
-echo "[INFO] 2/5 Instalando Docker, Git e utilitários..."
-if command -v amazon-linux-extras &> /dev/null; then
+# 1. Atualizar repositórios e pacotes do sistema operacional (Amazon Linux 2023 / AL2)
+echo "[INFO] 1/6 Atualizando repositórios e instalando dependências do sistema..."
+if command -v dnf &> /dev/null; then
+  dnf update -y
+  dnf install -y --allowerasing docker git jq e2fsprogs nvme-cli
+elif command -v amazon-linux-extras &> /dev/null; then
+  yum update -y
   amazon-linux-extras install docker -y
+  yum install -y git curl jq e2fsprogs
 else
-  yum install -y docker
+  yum update -y
+  yum install -y docker git curl jq e2fsprogs
 fi
-yum install -y git curl jq
 
-# 3. Habilitar e iniciar o daemon do Docker
-echo "[INFO] 3/5 Habilitando e inicializando serviço Docker..."
+# 2. Habilitar e iniciar o daemon do Docker
+echo "[INFO] 2/6 Habilitando e inicializando serviço Docker..."
 systemctl enable docker
 systemctl start docker
-
-# Conceder permissão ao usuário padrão 'ec2-user' para interagir com o Docker sem sudo
 usermod -aG docker ec2-user
 
+# 3. Montar volume EBS dedicado e desacoplado para dados do MongoDB
+echo "[INFO] 3/6 Localizando e montando volume EBS dedicado para o MongoDB..."
+DATA_MOUNT="/mnt/mongo-data"
+mkdir -p "$DATA_MOUNT"
+
+# Aguarda o anexo do volume EBS pelo Terraform (procura disco secundário não-raiz)
+EBS_DEVICE=""
+for i in $(seq 1 30); do
+  EBS_DEVICE=$(lsblk -dpno NAME | grep -v "nvme0n1" | head -n 1 || true)
+  if [ -n "$EBS_DEVICE" ]; then
+    echo "[INFO] Volume EBS persistente detectado: $EBS_DEVICE"
+    break
+  fi
+  echo "[INFO] Aguardando anexo do volume EBS ($${i}/30)..."
+  sleep 2
+done
+
+if [ -n "$EBS_DEVICE" ]; then
+  # Formata com ext4 apenas se for a primeira vez (sem sistema de arquivos existente)
+  if ! blkid "$EBS_DEVICE" > /dev/null 2>&1; then
+    echo "[INFO] Formatando novo volume EBS ($EBS_DEVICE) com ext4..."
+    mkfs.ext4 -m 1 "$EBS_DEVICE"
+  else
+    echo "[INFO] Sistema de arquivos existente detectado em $EBS_DEVICE. Preservando dados anteriores do banco!"
+  fi
+
+  mount "$EBS_DEVICE" "$DATA_MOUNT"
+  chmod 777 "$DATA_MOUNT"
+
+  UUID=$(blkid -s UUID -o value "$EBS_DEVICE")
+  if ! grep -q "$UUID" /etc/fstab; then
+    echo "UUID=$UUID $DATA_MOUNT ext4 defaults,nofail 0 2" >> /etc/fstab
+  fi
+
+  # Vincula o diretório do volume nomeado do Docker ao volume EBS persistente
+  mkdir -p /var/lib/docker/volumes/saas-mongo-data/_data
+  mount --bind "$DATA_MOUNT" /var/lib/docker/volumes/saas-mongo-data/_data
+  if ! grep -q "/var/lib/docker/volumes/saas-mongo-data/_data" /etc/fstab; then
+    echo "$DATA_MOUNT /var/lib/docker/volumes/saas-mongo-data/_data none bind 0 0" >> /etc/fstab
+  fi
+  echo "[INFO] Volume EBS persistente desacoplado montado com sucesso e vinculado ao Docker."
+else
+  echo "[WARN] Volume EBS dedicado não detectado no tempo limite. Prosseguindo com volume Docker padrão no disco raiz."
+fi
+
 # 4. Instalar o plugin Docker Compose v2 oficial
-echo "[INFO] 4/5 Instalando Docker Compose v2..."
+echo "[INFO] 4/6 Instalando Docker Compose v2..."
 DOCKER_CONFIG="$${DOCKER_CONFIG:-/usr/local/lib/docker}"
 mkdir -p "$DOCKER_CONFIG/cli-plugins"
 ARCH="$(uname -m)"
@@ -52,7 +96,7 @@ docker compose version
 
 # 5. Clonar o repositório oficial da aplicação
 APP_DIR="/opt/projeto-inter"
-echo "[INFO] 5/5 Preparando diretório da aplicação em $APP_DIR..."
+echo "[INFO] 5/6 Preparando diretório da aplicação em $APP_DIR..."
 mkdir -p "$APP_DIR"
 cd "$APP_DIR"
 

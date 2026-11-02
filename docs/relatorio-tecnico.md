@@ -28,7 +28,7 @@ A computação em nuvem estrutura-se em diferentes modelos de serviço (IaaS, Pa
 | **IaaS + CaaS** *(Adotado)* | Controle total de SO e rede com contêineres | Configuração de VPC, firewall, sistema operacional e orquestração de contêineres | **Modelo escolhido**: Permite automação completa via Terraform, isolamento estrito de portas e cumprimento dos requisitos da disciplina. |
 
 A solução foi estruturada no modelo **IaaS (Infrastructure as a Service)** na AWS, complementada por **CaaS (Containers as a Service)** localmente na máquina virtual:
-1. **Infraestrutura IaaS (AWS)**: Uma Virtual Private Cloud (VPC) com sub-rede pública, Internet Gateway, tabela de rotas e firewall virtual (Security Group) provisiona o ambiente isolado onde opera uma máquina virtual EC2 `t3.micro` (Amazon Linux 2).
+1. **Infraestrutura IaaS (AWS)**: Uma Virtual Private Cloud (VPC) com sub-rede pública, Internet Gateway, tabela de rotas e firewall virtual (Security Group) provisiona o ambiente isolado onde opera uma máquina virtual EC2 `t3.micro` executando **Amazon Linux 2023 (AL2023)**, substituindo o legado Amazon Linux 2 (cujo suporte oficial encerrou em 2026).
 2. **Camada CaaS (Docker & Docker Compose)**: Dentro da EC2, o Docker isola o processo da API e do MongoDB em uma rede bridge privada interna, eliminando a dependência do sistema operacional hospedeiro e garantindo empacotamento imutável.
 3. **Produto SaaS**: Para os usuários externos e empresas contratantes, a solução é oferecida como um software sob demanda multitenant com controle de cotas (`freemium` e `premium`), isolamento lógico de dados e autenticação baseada em tokens JWT.
 
@@ -39,58 +39,66 @@ A solução foi estruturada no modelo **IaaS (Infrastructure as a Service)** na 
 ### 2.1. Diagrama de Arquitetura
 
 ```
-+---------------------------------------------------------------------------------------+
-|                                    AWS CLOUD (us-east-1)                              |
-|                                                                                       |
-|   +-------------------------------------------------------------------------------+   |
-|   |                       VPC: 10.0.0.0/16 (enable_dns_hostnames = true)          |   |
-|   |                                                                               |   |
-|   |   +-----------------------------------+   +-------------------------------+   |   |
-|   |   |     Internet Gateway (IGW)        |   |   Tabela de Rotas Pública     |   |   |
-|   |   |   Conexão bidirecional Internet   |<--|   0.0.0.0/0 -> Target: IGW    |   |   |
-|   |   +-----------------------------------+   +-------------------------------+   |   |
-|   |                                                           |                   |   |
-|   |   +-------------------------------------------------------v-------------------+   |
-|   |   | Sub-rede Pública: 10.0.1.0/24 (us-east-1a, Auto-assign Public IP)          |   |
-|   |   |                                                                           |   |
-|   |   |   +-------------------------------------------------------------------+   |   |
-|   |   |   | Security Group (Firewall Virtual)                                 |   |   |
-|   |   |   | - Entrada SSH (Porta 22): Restrito exclusivamente ao IP do Admin  |   |   |
-|   |   |   | - Entrada API (Porta 3000): Aberto publicamente para Clientes/API |   |   |
-|   |   |   | - Saída (Egress): Irrestrita (0.0.0.0/0) para pacotes e contêineres|   |   |
-|   |   |   +-------------------------------------------------------------------+   |   |
-|   |   |                                           |                               |   |
-|   |   |   +---------------------------------------v---------------------------+   |   |
-|   |   |   | Instância EC2: t3.micro (Amazon Linux 2 x86_64)                   |   |   |
-|   |   |   | Key Pair: RSA 2048 (gerado via Terraform tls_private_key)         |   |   |
-|   |   |   | Provisionamento: user_data.sh.tftpl (Docker + Compose + Git Clone)|   |   |
-|   |   |   |                                                                   |   |
-|   |   |   |   +-----------------------------------------------------------+   |   |
-|   |   |   |   | Docker Engine / Docker Compose                            |   |   |
-|   |   |   |   |                                                           |   |   |
-|   |   |   |   |   Rede Bridge Privada: saas-internal-network              |   |   |
-|   |   |   |   |                                                           |   |   |
-|   |   |   |   |   [ Contêiner: saas-api ] <=======> [ Contêiner: mongodb ]|   |   |
-|   |   |   |   |   Node.js 22 Alpine (Porta 3000)    MongoDB 8.0 (127.0.0.1)  |   |   |
-|   |   |   |   +-----------------------------------------------------------+   |   |
-|   |   |   |                                                 |                 |   |   |
-|   |   |   |   +---------------------------------------------v-------------+   |   |
-|   |   |   |   | Volume EBS Persistente: /data/db (Volume saas-mongo-data) |   |   |
-|   |   |   |   +-----------------------------------------------------------+   |   |
-|   |   |   +-------------------------------------------------------------------+   |   |
-|   |   +---------------------------------------------------------------------------+   |
-|   +-------------------------------------------------------------------------------+   |
-+---------------------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------------+
+|                                     AWS CLOUD (us-east-1)                                     |
+|                                                                                               |
+|   +---------------------------------------------------------------------------------------+   |
+|   |                       VPC: 10.0.0.0/16 (enable_dns_hostnames = true)                  |   |
+|   |                                                                                       |   |
+|   |   +-----------------------------------+   +---------------------------------------+   |   |
+|   |   |     Internet Gateway (IGW)        |   |        Tabela de Rotas Pública        |   |   |
+|   |   |   Conexão bidirecional Internet   |<--|        0.0.0.0/0 -> Target: IGW       |   |   |
+|   |   +-----------------------------------+   +---------------------------------------+   |   |
+|   |                                                           |                           |   |
+|   |   +-------------------------------------------------------v---------------------------+   |
+|   |   | Sub-rede Pública: 10.0.1.0/24 (us-east-1a, Auto-assign Public IP)                  |   |
+|   |   |                                                                                   |   |
+|   |   |   +---------------------------------------------------------------------------+   |   |
+|   |   |   | Security Group (Firewall Virtual com Regras de Menor Privilégio)          |   |   |
+|   |   |   | - Entrada SSH (Porta 22): Restrito exclusivamente ao IP do Admin (/32)    |   |   |
+|   |   |   | - Entrada API (Porta 3000): Restrita ao IP Admin para evitar HTTP aberto   |   |   |
+|   |   |   | - Entrada HTTPS (Porta 443) e HTTP (Porta 80): Habilitadas para TLS       |   |   |
+|   |   |   | - Saída (Egress): Irrestrita (0.0.0.0/0) para pacotes e contêineres       |   |   |
+|   |   |   +---------------------------------------------------------------------------+   |   |
+|   |   |                                           |                                       |   |
+|   |   |   +---------------------------------------v-----------------------------------+   |   |
+|   |   |   | Instância EC2: t3.micro (Amazon Linux 2023 - AL2023 x86_64)               |   |   |
+|   |   |   | Key Pair: RSA 2048 (gerado via Terraform tls_private_key)                 |   |   |
+|   |   |   | Disco Raiz SO: 20 GB gp3 (delete_on_termination = true)                   |   |   |
+|   |   |   | Provisionamento: user_data.sh.tftpl (dnf + Docker + Compose + Auto-Mount) |   |   |
+|   |   |   |                                                                           |   |
+|   |   |   |   +-------------------------------------------------------------------+   |   |
+|   |   |   |   | Docker Engine / Docker Compose                                    |   |   |
+|   |   |   |   |                                                                   |   |   |
+|   |   |   |   |   Rede Bridge Privada: saas-internal-network                      |   |   |
+|   |   |   |   |                                                                   |   |   |
+|   |   |   |   |   [ Contêiner: saas-api ] <=======> [ Contêiner: mongodb ]        |   |   |
+|   |   |   |   |   Node.js 22 Alpine (Porta 3000)    MongoDB 8.0 (127.0.0.1)          |   |   |
+|   |   |   |   +-------------------------------------------------------------------+   |   |
+|   |   |   |                                                 |                         |   |   |
+|   |   |   +-------------------------------------------------|-------------------------+   |   |
+|   |   |                                                     |                             |   |
+|   |   |   +-------------------------------------------------v-------------------------+   |   |
+|   |   |   | Volume EBS Persistente Desacoplado: 10 GB gp3 (/mnt/mongo-data)          |   |   |
+|   |   |   | Recurso: aws_ebs_volume.mongo_data + aws_volume_attachment                |   |   |
+|   |   |   | CICLO DE VIDA INDEPENDENTE: Preserva dados se a EC2 for substituída       |   |   |
+|   |   |   +---------------------------------------------------------------------------+   |   |
+|   |   +-----------------------------------------------------------------------------------+   |
+|   +---------------------------------------------------------------------------------------+   |
++-----------------------------------------------------------------------------------------------+
 ```
 
-### 2.2. Detalhamento dos Componentes
+### 2.2. Detalhamento dos Componentes e Decisões de Segurança
 
-1. **VPC e Roteamento**: Bloco CIDR `10.0.0.0/16` segmentado com sub-rede pública `10.0.1.0/24`. O tráfego de saída é governado por uma tabela de rotas associada diretamente ao Internet Gateway.
-2. **Firewall e Segurança em Profundidade**:
-   - A porta SSH (22) é restrita exclusivamente ao endereço IPv4 do administrador através da variável `admin_ssh_ip` com máscara `/32` (bloqueando tentativas de força bruta da internet).
-   - A porta 3000 expõe a API RESTful de forma pública para chamadas do Postman ou clientes HTTP.
-   - A porta do MongoDB (`27017`) **não é exposta externamente**, comunicando-se exclusivamente com a API através da rede bridge interna do Docker (`saas-internal-network`).
-3. **Persistência de Dados**: O banco MongoDB utiliza um volume Docker nomeado (`saas-mongo-data`) mapeado no disco virtual EBS da EC2 (`/data/db`), garantindo que atualizações da aplicação ou reinicializações de contêiner não causem perda dos dados cadastrais dos locatários.
+1. **Migração para Amazon Linux 2023 (AL2023)**: O projeto migrou do Amazon Linux 2 (AL2) — cujo suporte oficial da AWS foi descontinuado em 2026 — para o **Amazon Linux 2023**, garantindo kernel 6.1+, gerenciamento moderno de pacotes com `dnf` e suporte a longo prazo da AWS.
+2. **Mitigação de Tráfego HTTP em Texto Claro e Proteção de Credenciais**:
+   - Para evitar a exposição de credenciais (senhas e tokens JWT) a ataques de interceptação (*man-in-the-middle*) em redes públicas, o Security Group **não** deixa a porta HTTP aberta globalmente (`0.0.0.0/0`).
+   - A variável `api_ingress_cidr` restringe por padrão o acesso da API e do SSH exclusivamente ao endereço IPv4 do administrador/avaliador (`var.admin_ssh_ip`), aplicando o princípio do menor privilégio.
+   - Foram abertas regras para as portas 80 e 443, preparando a infraestrutura para terminação TLS.
+3. **Persistência de Dados com EBS Desacoplado**:
+   - Em vez de gravar dados do banco no disco raiz volátil da EC2, provisionou-se um **volume EBS independente** (`aws_ebs_volume.mongo_data`, 10 GB gp3 criptografado) anexado via `aws_volume_attachment`.
+   - O script `user_data` detecta o volume secundário, formata-o com `ext4` na primeira inicialização, monta-o em `/mnt/mongo-data` e o vincula ao volume do Docker (`saas-mongo-data`).
+   - **Garantia de sobrevivência**: Caso a instância EC2 seja recriada ou substituída (ex: atualização de `user_data`), o volume EBS desacoplado permanece intacto na AWS e é montado pela nova instância preservando 100% dos dados dos locatários.
 
 ---
 
@@ -105,7 +113,7 @@ A segurança e a operação na nuvem seguem o **Modelo de Responsabilidade Compa
 | - Dados da aplicação, senhas criptografadas (bcrypt) e tokens JWT           |
 | - Controle de acesso por papéis (RBAC admin vs member) e isolamento lógico  |
 | - Configuração de firewall virtual (Security Groups e regras de porta)      |
-| - Sistema Operacional convidado (Amazon Linux 2), patches e atualizações    |
+| - Sistema Operacional convidado (Amazon Linux 2023 - AL2023), patches e dnf |
 | - Configuração dos contêineres Docker, Dockerfile e dependências Node.js    |
 | - Gestão de segredos de ambiente (.env) e chave privada SSH (.pem)          |
 +-----------------------------------------------------------------------------+
@@ -139,6 +147,7 @@ Enquanto o protótipo acadêmico concentra-se em uma única instância EC2 para 
 2. **Instâncias em Sub-redes Privadas**: As máquinas da aplicação rodam sem IP público, acessando a internet apenas via **NAT Gateway** para atualizações.
 3. **Banco de Dados Gerenciado**: Migração do MongoDB conteinerizado para o **Amazon DocumentDB** ou **MongoDB Atlas**, usufruindo de replicação nativa, backups contínuos e alta disponibilidade gerenciada pelo provedor.
 4. **Gerenciamento Seguro de Segredos**: Substituição do arquivo local `.env` pelo **AWS Secrets Manager** ou **Systems Manager Parameter Store**, com rotação automática de chaves e criptografia KMS.
+5. **Políticas de Backup e Retenção Automatizadas**: Implementação de ciclo de vida para o volume EBS desacoplado via **AWS Data Lifecycle Manager (DLM)** ou **AWS Backup**, realizando snapshots agendados automáticos (ex: diários com retenção de 30 dias) para recuperação de desastres (RPO/RTO).
 
 ---
 

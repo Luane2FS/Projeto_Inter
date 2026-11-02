@@ -1,142 +1,17 @@
-tls_private_key.ssh_key[0]: Refreshing state... [id=2349048c2fe029c16b03c1a043cf0ee560735e7d]
-local_sensitive_file.private_key_pem[0]: Refreshing state... [id=35fb9b11b58ac2ad4856a65d11f404e064987d15]
-data.aws_ami.amazon_linux_2[0]: Reading...
-aws_key_pair.generated_key[0]: Refreshing state... [id=projeto-inter-capacita-key]
-aws_vpc.main: Refreshing state... [id=vpc-0171bb9fe7ad57be2]
-data.aws_ami.amazon_linux_2[0]: Read complete after 1s [id=ami-0d5399502a6fdc073]
-aws_security_group.app_sg: Refreshing state... [id=sg-036e873170336bfb6]
-aws_internet_gateway.gw: Refreshing state... [id=igw-0de03f96988e12107]
-aws_subnet.public: Refreshing state... [id=subnet-04556a088b7d54034]
-aws_route_table.public_rt: Refreshing state... [id=rtb-0f85b721bcf8255c5]
-aws_route_table_association.public_assoc: Refreshing state... [id=rtbassoc-064dd8e99b248bb9d]
-
-Terraform used the selected providers to generate the following execution
-plan. Resource actions are indicated with the following symbols:
-  + create
-
-Terraform will perform the following actions:
-
-  # aws_instance.app_server will be created
-  + resource "aws_instance" "app_server" {
-      + ami                                  = "ami-0d5399502a6fdc073"
-      + arn                                  = (known after apply)
-      + associate_public_ip_address          = true
-      + availability_zone                    = (known after apply)
-      + cpu_core_count                       = (known after apply)
-      + cpu_threads_per_core                 = (known after apply)
-      + disable_api_stop                     = (known after apply)
-      + disable_api_termination              = (known after apply)
-      + ebs_optimized                        = (known after apply)
-      + enable_primary_ipv6                  = (known after apply)
-      + get_password_data                    = false
-      + host_id                              = (known after apply)
-      + host_resource_group_arn              = (known after apply)
-      + iam_instance_profile                 = (known after apply)
-      + id                                   = (known after apply)
-      + instance_initiated_shutdown_behavior = (known after apply)
-      + instance_lifecycle                   = (known after apply)
-      + instance_state                       = (known after apply)
-      + instance_type                        = "t3.micro"
-      + ipv6_address_count                   = (known after apply)
-      + ipv6_addresses                       = (known after apply)
-      + key_name                             = "projeto-inter-capacita-key"
-      + monitoring                           = (known after apply)
-      + outpost_arn                          = (known after apply)
-      + password_data                        = (known after apply)
-      + placement_group                      = (known after apply)
-      + placement_partition_number           = (known after apply)
-      + primary_network_interface_id         = (known after apply)
-      + private_dns                          = (known after apply)
-      + private_ip                           = (known after apply)
-      + public_dns                           = (known after apply)
-      + public_ip                            = (known after apply)
-      + secondary_private_ips                = (known after apply)
-      + security_groups                      = (known after apply)
-      + source_dest_check                    = true
-      + spot_instance_request_id             = (known after apply)
-      + subnet_id                            = "subnet-04556a088b7d54034"
-      + tags                                 = {
-          + "Name" = "projeto-inter-capacita-ec2-server"
-        }
-      + tags_all                             = {
-          + "Course"      = "Capacita-Computacao-em-Nuvem"
-          + "Environment" = "prod"
-          + "ManagedBy"   = "Terraform"
-          + "Name"        = "projeto-inter-capacita-ec2-server"
-          + "Project"     = "projeto-inter-capacita"
-        }
-      + tenancy                              = (known after apply)
-      + user_data                            = "064d349caa25b088c92e6477a0b1426c1c07bdb4"
-      + user_data_base64                     = (known after apply)
-      + user_data_replace_on_change          = true
-      + vpc_security_group_ids               = [
-          + "sg-036e873170336bfb6",
-        ]
-
-      + capacity_reservation_specification (known after apply)
-
-      + cpu_options (known after apply)
-
-      + ebs_block_device (known after apply)
-
-      + enclave_options (known after apply)
-
-      + ephemeral_block_device (known after apply)
-
-      + instance_market_options (known after apply)
-
-      + maintenance_options (known after apply)
-
-      + metadata_options (known after apply)
-
-      + network_interface (known after apply)
-
-      + private_dns_name_options (known after apply)
-
-      + root_block_device {
-          + delete_on_termination = true
-          + device_name           = (known after apply)
-          + encrypted             = (known after apply)
-          + iops                  = (known after apply)
-          + kms_key_id            = (known after apply)
-          + tags                  = {
-              + "Name" = "projeto-inter-capacita-root-ebs"
-            }
-          + tags_all              = (known after apply)
-          + throughput            = (known after apply)
-          + volume_id             = (known after apply)
-          + volume_size           = 20
-          + volume_type           = "gp2"
-        }
-    }
-
-Plan: 1 to add, 0 to change, 0 to destroy.
-
-Changes to Outputs:
-  + api_endpoint           = (known after apply)
-  + api_healthcheck_url    = (known after apply)
-  + api_liveness_url       = (known after apply)
-  + api_readiness_url      = (known after apply)
-  + ec2_instance_id        = (known after apply)
-  + ec2_public_dns         = (known after apply)
-  + ec2_public_ip          = (known after apply)
-  + ssh_connection_command = (known after apply)
-aws_instance.app_server: Creating...
-aws_instance.app_server: Still creating... [10s elapsed]
-aws_instance.app_server: Creation complete after 14s [id=i-0ada4fcd2aa7ca0ab]
-
-Apply complete! Resources: 1 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 3 added, 1 changed, 1 destroyed.
 
 Outputs:
 
-api_endpoint = "http://184.192.104.150:3000"
-api_healthcheck_url = "http://184.192.104.150:3000/health"
-api_liveness_url = "http://184.192.104.150:3000/health/live"
-api_readiness_url = "http://184.192.104.150:3000/health/ready"
-ec2_instance_id = "i-0ada4fcd2aa7ca0ab"
-ec2_public_dns = "ec2-184-192-104-150.compute-1.amazonaws.com"
-ec2_public_ip = "184.192.104.150"
+api_endpoint = "http://35.170.55.119:3000"
+api_healthcheck_url = "http://35.170.55.119:3000/health"
+api_ingress_cidr = "187.78.167.114/32"
+api_liveness_url = "http://35.170.55.119:3000/health/live"
+api_readiness_url = "http://35.170.55.119:3000/health/ready"
+ec2_instance_id = "i-089bd54aa9639c3bf"
+ec2_public_dns = "ec2-35-170-55-119.compute-1.amazonaws.com"
+ec2_public_ip = "35.170.55.119"
+mongo_data_volume_id = "vol-083972d403ed9c951"
 public_subnet_id = "subnet-04556a088b7d54034"
 security_group_id = "sg-036e873170336bfb6"
-ssh_connection_command = "ssh -i ./terraform/projeto-inter-capacita-key.pem ec2-user@184.192.104.150"
+ssh_connection_command = "ssh -i ./terraform/projeto-inter-capacita-key.pem ec2-user@35.170.55.119"
 vpc_id = "vpc-0171bb9fe7ad57be2"

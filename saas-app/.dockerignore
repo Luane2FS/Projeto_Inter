@@ -1,0 +1,24 @@
+# Diretórios e dependências
+node_modules/
+.venv/
+.git/
+.github/
+
+# Arquivos de ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Testes e documentação que não devem subir na imagem final
+tests/
+test-scripts/
+docs/
+*.md
+
+# Logs e arquivos de depuração
+*.log
+npm-debug.log*
+
+# Arquivos temporários e de SO
+.DS_Store
+Thumbs.db

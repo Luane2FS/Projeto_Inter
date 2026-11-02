@@ -1,0 +1,74 @@
+# ==============================================================================
+# Docker Compose - Ambiente de Produção / Integração Nuvem AWS
+# Projeto Integrador: Capacita Computação em Nuvem
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Banco de Dados MongoDB 8.0 (Isolado na rede interna)
+  # ----------------------------------------------------------------------------
+  mongodb:
+    image: mongo:8.0
+    container_name: saas-mongodb
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all"]
+    # Porta mapeada estritamente em loopback (127.0.0.1) para depuração local do host
+    # Impedindo exposição acidental da porta 27017 na interface pública da AWS
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - saas-network
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "quit(db.adminCommand({ ping: 1 }).ok === 1 ? 0 : 1)"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # ----------------------------------------------------------------------------
+  # Aplicação SaaS Multitenant (Node.js 22 + Express 5)
+  # ----------------------------------------------------------------------------
+  app:
+    build:
+      context: ./saas-app
+      dockerfile: Dockerfile
+    container_name: saas-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGO_URI=mongodb://mongodb:27017/saas
+      - JWT_SECRET=${JWT_SECRET:-substitua_por_uma_chave_aleatoria_com_no_minimo_32_caracteres}
+      - ALLOW_PUBLIC_MULTI_REGISTER=false
+      - ALLOW_DIRECT_PLAN_CHANGE=false
+      - RATE_LIMIT_STORE=mongodb
+      - CORS_ORIGIN=*
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - saas-network
+
+# ------------------------------------------------------------------------------
+# Volumes Persistentes (Garantem que dados sobrevivam a recriação de containers)
+# ------------------------------------------------------------------------------
+volumes:
+  mongo-data:
+    name: saas-mongo-data
+
+# ------------------------------------------------------------------------------
+# Rede Bridge Privada (Comunicação isolada entre a API e o Banco)
+# ------------------------------------------------------------------------------
+networks:
+  saas-network:
+    name: saas-internal-network
+    driver: bridge

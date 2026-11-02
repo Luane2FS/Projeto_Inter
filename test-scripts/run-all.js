@@ -63,8 +63,8 @@ const main = async () => {
   for (const r of results) {
     const badge =
       r.failed === 0
-        ? `${c.green}✔ APROVADO${c.reset}`
-        : `${c.red}✖ FALHA (${r.failed})${c.reset}`;
+        ? `${c.green}[APROVADO]${c.reset}`
+        : `${c.red}[FALHA (${r.failed})]${c.reset}`;
     const stats = `${r.passed}/${r.total} passos`;
     console.log(`  ${badge}  ${r.name.padEnd(42, ' ')} ${stats} (${r.duration}ms)`);
   }

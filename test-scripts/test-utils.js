@@ -72,7 +72,7 @@ const ensureServerRunning = async () => {
   while (Date.now() - start < maxWaitMs) {
     await sleep(400);
     if (await isServerUp()) {
-      console.log(`${c.green}✔ Servidor iniciado com sucesso para os testes.${c.reset}\n`);
+      console.log(`${c.green}[OK] Servidor iniciado com sucesso para os testes.${c.reset}\n`);
       return { spawned: true };
     }
   }
@@ -146,11 +146,11 @@ const createTestRunner = (suiteTitle) => {
       try {
         await fn();
         const duration = Math.round(performance.now() - startTime);
-        console.log(`  ${c.green}✔ PASS${c.reset}  ${name} ${c.dim}(${duration}ms)${c.reset}`);
+        console.log(`  ${c.green}[PASS]${c.reset}  ${name} ${c.dim}(${duration}ms)${c.reset}`);
         steps.push({ name, passed: true, duration });
       } catch (error) {
         const duration = Math.round(performance.now() - startTime);
-        console.log(`  ${c.red}✖ FAIL${c.reset}  ${name} ${c.dim}(${duration}ms)${c.reset}`);
+        console.log(`  ${c.red}[FAIL]${c.reset}  ${name} ${c.dim}(${duration}ms)${c.reset}`);
         console.log(`         ${c.red}${error.message || error}${c.reset}`);
         steps.push({ name, passed: false, duration, error: error.message || String(error) });
       }

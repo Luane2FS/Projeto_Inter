@@ -37,16 +37,24 @@ A solução adota uma estratégia em camadas para entrega de nuvem:
 
 ## Execução Local com Docker
 
-1. Suba os contêineres da aplicação e banco com um único comando:
+1. Gere o segredo JWT no arquivo `saas-app/.env` (se o arquivo já tiver um segredo forte, mantenha o existente):
 
 ```bash
-docker compose up -d --build
+cd saas-app
+npm run setup:env
+cd ..
 ```
 
-2. Verifique o status dos serviços e healthchecks:
+2. Suba os contêineres da aplicação e banco com um único comando. O `--env-file` fornece o segredo ao Compose; esse arquivo fica fora do Git:
 
 ```bash
-docker compose ps
+docker compose --env-file saas-app/.env up -d --build
+```
+
+3. Verifique o status dos serviços e healthchecks:
+
+```bash
+docker compose --env-file saas-app/.env ps
 
 # Health check consolidado (status e dependências):
 curl http://localhost:3000/health
@@ -58,10 +66,10 @@ curl http://localhost:3000/health/live
 curl http://localhost:3000/health/ready
 ```
 
-3. Para encerrar:
+4. Para encerrar:
 
 ```bash
-docker compose down
+docker compose --env-file saas-app/.env down
 ```
 
 ---

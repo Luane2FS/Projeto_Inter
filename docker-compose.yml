@@ -44,14 +44,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - MONGO_URI=mongodb://mongodb:27017/saas
-      - JWT_SECRET=${JWT_SECRET:?ERRO_SEGURANCA: A variavel JWT_SECRET e obrigatoria (minimo 32 caracteres). Configure no .env ou no ambiente antes de iniciar.}
-      - ALLOW_PUBLIC_MULTI_REGISTER=false
-      - ALLOW_DIRECT_PLAN_CHANGE=false
-      - RATE_LIMIT_STORE=mongodb
-      - CORS_ORIGIN=*
+      NODE_ENV: "production"
+      PORT: "3000"
+      MONGO_URI: "mongodb://mongodb:27017/saas"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET obrigatoria (minimo 32 caracteres). Configure em saas-app/.env ou no ambiente.}"
+      ALLOW_PUBLIC_MULTI_REGISTER: "false"
+      ALLOW_DIRECT_PLAN_CHANGE: "false"
+      RATE_LIMIT_STORE: "mongodb"
+      CORS_ORIGIN: "*"
     depends_on:
       mongodb:
         condition: service_healthy

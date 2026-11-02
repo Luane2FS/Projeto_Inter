@@ -7,6 +7,11 @@ node_modules/
 .env.*
 !.env.example
 
+# Documentos pedagógicos de consulta interna (não versionar)
+Documentos_Consulta/
+[Dd]ocumentos_[Cc]onsulta/
+Documentos*/
+
 # Terraform
 .terraform/
 *.tfstate

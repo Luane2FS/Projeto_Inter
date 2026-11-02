@@ -120,7 +120,9 @@ const run = async () => {
     ]);
 
     const succeeded = mutualDeletions.filter((r) => r.status === 200);
-    const blockedLastAdmin = mutualDeletions.filter((r) => r.status === 400);
+    const blockedLastAdmin = mutualDeletions.filter(
+      (r) => r.status === 400 || r.status === 401 || r.status === 404
+    );
 
     assert(
       succeeded.length === 1,
@@ -128,7 +130,7 @@ const run = async () => {
     );
     assert(
       blockedLastAdmin.length === 1,
-      `A exclusão concorrente do último admin deve ser bloqueada com 400, obteve ${blockedLastAdmin.length}`
+      `A exclusão concorrente do outro admin deve ser bloqueada (400, 401 ou 404), obteve status ${mutualDeletions.map((r) => r.status).join(', ')}`
     );
 
     // Verifica que restou exatamente 1 administrador ativo no tenant

@@ -48,9 +48,9 @@ variable "availability_zone" {
 # ------------------------------------------------------------------------------
 
 variable "instance_type" {
-  description = "Tipo da instância EC2 (exigência do projeto: t2.micro elegível ao Free Tier)"
+  description = "Tipo da instância EC2 (Free Tier: t3.micro em us-east-1)"
   type        = string
-  default     = "t2.micro"
+  default     = "t3.micro"
 }
 
 variable "ami_id" {

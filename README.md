@@ -11,33 +11,110 @@ Este projeto integra o desenvolvimento de uma **API RESTful SaaS Multitenant** (
 - [Estrutura do Repositório](#estrutura-do-repositório)
 - [Requisitos](#requisitos)
 - [Execução Local com Docker](#execução-local-com-docker)
+- [Execução Manual / Desenvolvimento](#execução-manual--desenvolvimento-sem-docker)
 - [Infraestrutura AWS com Terraform](#infraestrutura-aws-com-terraform)
-- [Testes e Validação](#testes-e-validação)
+- [Validação e Testes Automatizados](#validação-e-testes-automatizados)
+- [Coleção Postman](#coleção-postman)
+- [Relatório Técnico e Evidências](#relatório-técnico-e-evidências)
+- [Integração Contínua (CI/CD)](#integração-contínua-cicd)
+- [Execução no GitHub Codespaces](#execução-no-github-codespaces--dev-containers)
+- [Principais Endpoints](#principais-endpoints)
 
 ---
 
 ## Arquitetura Geral
 
 A solução adota uma estratégia em camadas para entrega de nuvem:
-1. **Infraestrutura como Serviço (IaaS)**: Provisionamento automatizado via **Terraform** na AWS (VPC `10.0.0.0/16`, Subnet pública `10.0.1.0/24`, Internet Gateway, Tabela de Rotas, Security Group com princípio do menor privilégio e regras para TLS, Volume EBS persistente desacoplado para o MongoDB e Instância EC2 `t3.micro` com **Amazon Linux 2023**).
-2. **Conteinerização sobre IaaS**: **Docker e Docker Compose** executando os contêineres `saas-api` e `mongodb` sobre uma topologia de rede em duas camadas (`saas-frontend-network` pública e `saas-backend-network` interna com `internal: true`), garantindo isolamento total do banco de dados e persistência no volume EBS.
-3. **Software como Serviço (SaaS)**: Aplicação multitenant com planos `freemium` (até 3 usuários) e `premium`, autenticação JWT (`HS256`), controle de acesso por papéis (`admin`/`member`), isolamento lógico estrito e rate limiting.
+
+1. **Infraestrutura como Serviço (IaaS)**: Provisionamento automatizado via **Terraform** na AWS:
+   - **Rede Virtual**: VPC dedicada (`10.0.0.0/16`), Sub-rede pública (`10.0.1.0/24`) na Zona de Disponibilidade `us-east-1a`, Internet Gateway e Tabela de Rotas com saída pública.
+   - **Segurança de Borda**: Security Group aplicando o **princípio do menor privilégio** (`api_ingress_cidr`), restringindo acessos administrativos (SSH - porta 22) e da API (porta 3000) ao IP do operador por padrão, com regras preparadas para TLS (portas 443 e 80).
+   - **Computação**: Instância EC2 **`t3.micro`** (2 vCPUs, 1 GB RAM) com **Amazon Linux 2023 (AL2023)** elegível ao AWS Free Tier.
+   - **Armazenamento Desacoplado**: Volume EBS independente de 10 GB (`gp3`, criptografado) formatado em `ext4` e montado em `/mnt/mongo-data`, garantindo que os dados do MongoDB persistam mesmo em caso de substituição ou destruição da instância EC2.
+   - **Automação de Inicialização (Bootstrapping)**: Script `user_data.sh.tftpl` que instala Docker via `dnf`, monta o disco EBS persistente, gera credenciais fortes com permissão restrita `0600` para o `.env` e sobe os serviços sem intervenção manual.
+
+2. **Conteinerização sobre IaaS**: **Docker e Docker Compose** executando os serviços sobre uma **topologia de redes em duas camadas**:
+   - `saas-frontend-network` (bridge pública): comunica a porta de entrada da API (`saas-api`) com o host.
+   - `saas-backend-network` (bridge com `internal: true`): conecta a API ao banco de dados (`saas-mongodb`), **sem gateway para a internet** e sem nenhuma porta exposta no host da EC2, isolando completamente o banco.
+   - Volume Docker `saas-mongo-data` apontando diretamente para o ponto de montagem do volume EBS desacoplado (`/mnt/mongo-data`).
+
+3. **Software como Serviço (SaaS)**: Aplicação multitenant desenvolvida em Node.js 22 e Express 5:
+   - Modelos de planos `freemium` (até 3 usuários) e `premium` (usuários ilimitados).
+   - Autenticação stateless via tokens JWT (`HS256`).
+   - Controle de acesso baseado em papéis (**RBAC**: `admin` vs `member`).
+   - Isolamento lógico estrito de dados por `tenantId` em todas as coleções.
+   - Rate limiting distribuído (armazenado no MongoDB com fallback em memória) com suporte a cabeçalhos padrão IETF.
+   - Probes de observabilidade (`/health`, `/health/live`, `/health/ready`).
+
+---
+
+## Estrutura do Repositório
+
+```text
+Projeto_Inter/
+├── .devcontainer/                  # Ambiente de desenvolvimento em contêiner (Codespaces)
+│   ├── devcontainer.json           # Configuração de extensões e ferramentas do VS Code
+│   ├── docker-compose.yml          # Setup local de Node.js 22 + MongoDB 8 Replica Set
+│   └── setup.js                    # Script de bootstrap do Codespace
+├── .github/
+│   ├── docker-compose.standalone.yml # MongoDB standalone para testes de contingência
+│   └── workflows/
+│       └── ci.yml                  # Pipeline CI: validação de Terraform e testes da API
+├── docs/                           # Documentação e entregáveis do projeto
+│   ├── relatorio-tecnico.md        # Relatório técnico completo de arquitetura e infraestrutura
+│   ├── OPERATIONS.md               # Procedimentos operacionais, backup e observabilidade
+│   └── evidencias/                 # Logs reais de execução na nuvem AWS
+│       ├── terraform_init.txt      # Inicialização dos provedores Terraform
+│       ├── terraform_plan.txt      # Plano de execução da infraestrutura AWS
+│       ├── terraform_apply.txt     # Saída do provisionamento da EC2 t3.micro
+│       ├── validacao_ssh.txt       # Sessão SSH comprovando AL2023, EBS e Docker
+│       └── testes_api_ec2.txt      # Execução da suíte E2E (45/45) contra o IP público
+├── postman/                        # Coleção Postman oficial da API
+│   ├── README.md                   # Instruções de importação e variáveis de ambiente
+│   └── SaaS-App.postman_collection.json # Coleção Postman v2.1
+├── saas-app/                       # Código-fonte da aplicação SaaS
+│   ├── controllers/                # Controladores HTTP (auth, tenants, users, plans)
+│   ├── middleware/                 # Middlewares (auth JWT, RBAC, tenantContext, rateLimiter)
+│   ├── models/                     # Modelos de dados e validações (Mongoose)
+│   ├── routes/                     # Definições de rotas da API
+│   ├── services/                   # Regras de negócio e transações ACID
+│   ├── scripts/                    # Scripts utilitários (setup-env.js)
+│   ├── Dockerfile                  # Empacotamento multi-stage seguro (Node 22 Alpine)
+│   └── server.js                   # Ponto de entrada da aplicação Express
+├── terraform/                      # Infraestrutura como Código (IaC) na AWS
+│   ├── main.tf                     # Definição de VPC, Subnet, SG, EBS e EC2 (AL2023)
+│   ├── variables.tf                # Variáveis parametrizadas (instance_type: t3.micro)
+│   ├── outputs.tf                  # Saídas de infraestrutura (IPs, URLs de health e SSH)
+│   └── scripts/
+│       └── user_data.sh.tftpl      # Script de inicialização automatizada da instância
+├── test-scripts/                   # Suíte de testes de ponta a ponta (E2E)
+│   ├── run-all.js                  # Orquestrador consolidado de testes
+│   ├── test-smoke.js               # Smoke test de rotas públicas e headers de segurança
+│   ├── test-onboarding.js          # Fluxo de criação de tenant e registrationToken
+│   ├── test-rbac.js                # Validação de permissões admin vs member
+│   ├── test-isolation.js           # Garantia de isolamento cross-tenant
+│   ├── test-concurrency.js         # Concorrência atômica sob limite de vagas
+│   └── test-rate-limit.js          # Validação de Rate Limiting e HTTP 429
+├── docker-compose.yml              # Orquestração da API e MongoDB em 2 redes
+├── package.json                    # Gerenciador de tarefas raiz
+└── README.md                       # Documentação principal do projeto
+```
 
 ---
 
 ## Requisitos
 
 - **Git**
-- **Node.js** `>= 20.19.0`
+- **Node.js** `>= 20.19.0` e **npm**
 - **Docker** e **Docker Compose**
-- **Terraform** `>= 1.5.0` (para provisionamento AWS)
-- **AWS CLI** configurada (para deploy em nuvem)
+- **Terraform** `>= 1.5.0`
+- **AWS CLI v2** configurada (`aws configure`) com permissões para EC2, VPC e EBS
 
 ---
 
 ## Execução Local com Docker
 
-1. Gere o segredo JWT no arquivo `saas-app/.env` (se o arquivo já tiver um segredo forte, mantenha o existente):
+1. Gere o segredo JWT no arquivo `saas-app/.env`:
 
 ```bash
 cd saas-app
@@ -45,13 +122,13 @@ npm run setup:env
 cd ..
 ```
 
-2. Suba os contêineres da aplicação e banco com um único comando. O `--env-file` fornece o segredo ao Compose; esse arquivo fica fora do Git:
+2. Inicie os contêineres da aplicação e banco com o Compose:
 
 ```bash
 docker compose --env-file saas-app/.env up -d --build
 ```
 
-3. Verifique o status dos serviços e healthchecks:
+3. Verifique o status dos serviços e os healthchecks:
 
 ```bash
 docker compose --env-file saas-app/.env ps
@@ -66,7 +143,7 @@ curl http://localhost:3000/health/live
 curl http://localhost:3000/health/ready
 ```
 
-4. Para encerrar:
+4. Para encerrar os serviços locais:
 
 ```bash
 docker compose --env-file saas-app/.env down
@@ -83,25 +160,10 @@ cd saas-app
 npm install
 ```
 
-2. Configure o arquivo `saas-app/.env` (você pode gerar automaticamente com o script incluído):
+2. Configure o arquivo `saas-app/.env`:
 
 ```bash
-# Cria o .env e gera uma JWT_SECRET criptográfica forte (64 bytes / 128 hex):
 npm run setup:env
-```
-
-Ou copie manualmente de `saas-app/.env.example`:
-
-```env
-NODE_ENV=development
-PORT=3000
-MONGO_URI=mongodb://localhost:27017/saas
-JWT_SECRET=substitua_por_uma_chave_aleatoria_com_no_minimo_32_caracteres
-ALLOW_PUBLIC_MULTI_REGISTER=false
-ALLOW_DIRECT_PLAN_CHANGE=false
-RATE_LIMIT_STORE=mongodb
-CORS_ORIGIN=*
-TRUST_PROXY=
 ```
 
 3. Inicie o servidor:
@@ -110,63 +172,151 @@ TRUST_PROXY=
 npm start
 ```
 
-> Na inicialização, os planos padrão (`freemium`: até 3 usuários, `premium`: usuários ilimitados) são populados automaticamente na coleção `plans` caso ainda não existam.
+---
 
-O cadastro público de tenant aceita somente planos sem custo enquanto não houver integração de cobrança. A resposta de `POST /tenants` inclui um `registrationToken` de uso único, válido por 24 horas; envie esse valor em `POST /auth/register` junto com o `tenantId` para cadastrar o primeiro admin. Caso o prazo de 24 horas expire sem o cadastro do primeiro usuário (ou em tenants antigos ainda sem usuários), o nome é liberado automaticamente ao recriar o tenant em `POST /tenants` ou na reconciliação de inicialização.
+## Infraestrutura AWS com Terraform
 
-Quando o mesmo e-mail está cadastrado em mais de um tenant com a mesma senha, o login retorna `409` e exige `tenantId` para identificar a conta. `ALLOW_PUBLIC_MULTI_REGISTER` e `ALLOW_DIRECT_PLAN_CHANGE` permanecem desativados em produção.
+O diretório `terraform/` contém a automação completa da infraestrutura na nuvem AWS.
 
-Com `RATE_LIMIT_STORE=mongodb`, os contadores são compartilhados entre instâncias. Se esse armazenamento falhar durante uma requisição, a API usa temporariamente o contador em memória local e registra um aviso limitado a 1 por minuto; esse fallback preserva disponibilidade, mas não compartilha o limite entre instâncias.
+### Parâmetros Configuráveis (`terraform/variables.tf`)
 
-Nas rotas de login e registro, a API falha de forma fechada (`503`) se o rate limiter compartilhado em MongoDB estiver indisponível, evitando aceitar tentativas de autenticação sem o limite distribuído. As demais rotas mantêm o fallback local para priorizar disponibilidade.
+* `aws_region`: Região da AWS (padrão: `us-east-1`).
+* `instance_type`: Tipo de instância EC2 (padrão: **`t3.micro`** com 2 vCPUs e 1 GB RAM, elegível ao Free Tier).
+* `ami_id`: AMI específica (padrão vazio: resolve automaticamente a AMI oficial mais recente do **Amazon Linux 2023**).
+* `mongo_data_volume_size`: Tamanho em GB do volume EBS independente (padrão: `10` GB).
+* `api_ingress_cidr`: CIDR permitido para acessar a API (padrão restrito ao IP do operador `/32` para proteção do tráfego).
 
-Os eventos de indisponibilidade do rate limiter incluem o escopo, a quantidade de falhas desde o último aviso e a duração observada; quando o armazenamento MongoDB volta a responder, a API registra a recuperação. As tentativas de reconciliação de tenants registram resultado, duração, tentativa e quantidade de registros removidos.
+### Passo a Passo de Provisionamento
 
-Os endpoints `/health/live` e `/health/ready` separam a disponibilidade do processo da prontidão do serviço. O endpoint de prontidão testa o MongoDB e retorna `503` quando a dependência não responde.
-
-O script `npm run setup:env` exige confirmação em terminal. Em execução não interativa, use `npm run setup:env -- --yes` somente quando quiser autorizar explicitamente a criação ou alteração do `.env`; a rotação de uma chave existente também requer `--force`.
-
-O workflow de CI executa os testes unitários/de integração e os scripts end-to-end com Node.js 22, cobrindo MongoDB em replica set e standalone. A reconciliação de dados legados e exclusões pendentes permanece no startup para preservar a compatibilidade; em instalações grandes, avalie movê-la para uma migração/tarefa operacional controlada antes de remover essa garantia.
-
-Consulte [docs/OPERATIONS.md](docs/OPERATIONS.md) para recomendações de backup, restauração e leitura dos sinais operacionais.
-
-4. Execute a suíte de testes automatizados:
+1. Acesse o diretório do Terraform:
 
 ```bash
-# Testes unitários e de integração interna (Node test runner)
-npm test
-
-# Suíte de scripts E2E próprios (test-scripts/)
-npm run test:scripts
+cd terraform
 ```
 
-## Scripts Próprios de Teste (`test-scripts/`)
+2. Inicialize o Terraform para baixar os providers (`aws`, `tls`, `local`):
 
-O projeto dispõe de uma pasta dedicada com scripts de teste de ponta a ponta que realizam chamadas HTTP reais contra a API:
+```bash
+terraform init
+```
 
-- **`node test-scripts/run-all.js`**: Executa todas as suítes e emite relatório consolidado.
-- **`node test-scripts/test-smoke.js`**: Validação de endpoints públicos, planos e headers de segurança/rate limit.
-- **`node test-scripts/test-onboarding.js`**: Validação do ciclo de vida do `registrationToken` e bloqueio de planos pagos.
-- **`node test-scripts/test-rbac.js`**: Validação de controle de papéis (`admin` vs `member`) e revogação imediata de token.
-- **`node test-scripts/test-isolation.js`**: Validação do isolamento de tenants e unicidade de e-mail por empresa.
-- **`node test-scripts/test-concurrency.js`**: Teste de carga e concorrência atômica sob limite de vagas e admins.
-- **`node test-scripts/test-rate-limit.js`**: Teste de bloqueio HTTP 429 e `Retry-After`.
+3. Valide o plano de execução e os recursos a serem criados:
 
-Consulte [test-scripts/README.md](test-scripts/README.md) para documentação completa.
+```bash
+terraform plan
+```
+
+4. Aplique o provisionamento na nuvem AWS:
+
+```bash
+terraform apply -auto-approve
+```
+
+Ao final da execução, o Terraform exibirá os outputs com o endereço IP público da EC2, URLs de healthcheck e o comando de conexão SSH:
+
+```text
+Outputs:
+api_endpoint           = "http://<IP_PUBLICO_EC2>:3000"
+api_healthcheck_url    = "http://<IP_PUBLICO_EC2>:3000/health"
+ec2_instance_id        = "i-089bd54aa9639c3bf"
+ec2_public_ip          = "35.170.55.119"
+mongo_data_volume_id   = "vol-083972d403ed9c951"
+ssh_connection_command = "ssh -i ./terraform/projeto-inter-capacita-key.pem ec2-user@35.170.55.119"
+```
+
+5. **Acesso Remoto via SSH**:
+O par de chaves RSA 2048 é gerado dinamicamente e salvo localmente com permissão `0600`. Conecte-se à instância:
+
+```bash
+ssh -i projeto-inter-capacita-key.pem ec2-user@<IP_PUBLICO_EC2>
+```
+
+6. **Desprovisionamento (Limpeza de Recursos)**:
+Após finalizar os testes e a avaliação, destrua toda a infraestrutura para evitar custos:
+
+```bash
+terraform destroy -auto-approve
+```
+
+---
+
+## Validação e Testes Automatizados
+
+O projeto conta com suíte de testes unitários e testes de ponta a ponta (E2E) que realizam chamadas HTTP reais:
+
+```bash
+# Executa testes unitários da aplicação:
+cd saas-app
+npm test
+
+# Executa a suíte completa de 45 testes E2E:
+node ../test-scripts/run-all.js
+```
+
+### Scripts de Teste Especializados (`test-scripts/`)
+
+- **`test-smoke.js`**: Verifica rotas públicas, integridade do banco e headers de segurança nativos (`securityHeaders.js`).
+- **`test-onboarding.js`**: Testa o fluxo de criação de tenant, ciclo de vida do `registrationToken` e bloqueio de planos pagos sem faturamento.
+- **`test-rbac.js`**: Testa controle de acesso baseado em papéis (`admin` vs `member`), proteção contra autoexclusão do último admin e revogação imediata de token.
+- **`test-isolation.js`**: Valida a impossibilidade de acesso cruzado a dados e usuários entre diferentes tenants.
+- **`test-concurrency.js`**: Simula requisições simultâneas concorrentes para validar a consistência atômica de vagas no plano.
+- **`test-rate-limit.js`**: Dispara requisições em rajada para validar proteção contra força bruta e resposta `HTTP 429 Too Many Requests`.
+
+---
+
+## Coleção Postman
+
+A coleção oficial do Postman está versionada no diretório [`postman/`](postman/):
+
+* **[`postman/SaaS-App.postman_collection.json`](postman/SaaS-App.postman_collection.json)**: Contém todas as requisições configuradas com parâmetros, corpos de exemplo e scripts de teste de resposta.
+* **[`postman/README.md`](postman/README.md)**: Guia passo a passo de importação, variáveis de ambiente (`baseUrl`, `adminToken`) e fluxos de teste.
+
+---
+
+## Relatório Técnico e Evidências
+
+Toda a documentação técnica exigida pelo curso está consolidada na pasta `docs/`:
+
+* **[Relatório Técnico de Arquitetura e Infraestrutura (`docs/relatorio-tecnico.md`)](docs/relatorio-tecnico.md)**:
+  - Análise dos modelos de serviço em nuvem (**SaaS hospedado em IaaS com Docker Compose**).
+  - Diagrama de arquitetura em nuvem (VPC, AL2023 `t3.micro`, volume EBS independente, rede interna Docker).
+  - Modelo de responsabilidade compartilhada para resiliência (*AWS vs. Cliente*).
+  - Diferenciação entre **Bootstrapping** (`user_data`) e **Elasticidade** (Auto Scaling Group e métricas).
+  - Dimensionamento, estimativa de custos e evolução para produção (ALB, HTTPS/TLS, MongoDB Atlas).
+
+* **Evidências de Execução na AWS (`docs/evidencias/`)**:
+  - [`terraform_init.txt`](docs/evidencias/terraform_init.txt): Sucesso na inicialização e download dos provedores.
+  - [`terraform_plan.txt`](docs/evidencias/terraform_plan.txt): Plano formal de provisionamento dos 11 recursos.
+  - [`terraform_apply.txt`](docs/evidencias/terraform_apply.txt): Execução do apply com criação da instância e volume EBS.
+  - [`validacao_ssh.txt`](docs/evidencias/validacao_ssh.txt): Comprovação de acesso SSH, kernel AL2023, montagem de `/mnt/mongo-data`, `.env` restrito e contêineres ativos.
+  - [`testes_api_ec2.txt`](docs/evidencias/testes_api_ec2.txt): 45 de 45 passos aprovados executados diretamente contra a API pública na AWS.
+
+---
+
+## Integração Contínua (CI/CD)
+
+O pipeline do GitHub Actions em [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa duas esteiras automáticas a cada push ou pull request:
+
+1. **`terraform`**: Executa `terraform fmt -check` para garantir padronização de código e `terraform validate` para validar a sintaxe e integridade dos manifestos HCL.
+2. **`test`**: Sobe um ambiente de contêiner com MongoDB em Replica Set, instala dependências e executa os testes unitários, de integração e os scripts E2E da API.
+
+---
 
 ## Execução no GitHub Codespaces / Dev Containers
 
-O repositório inclui configuração pronta em `.devcontainer/` (**Node.js 22** + **MongoDB 8.0** com porta restrita à interface local `127.0.0.1` e configurado automaticamente como Replica Set `rs0`, com suporte nativo a transações ACID):
+O repositório inclui suporte pronto para desenvolvimento em nuvem via `.devcontainer/`:
 
 1. No GitHub, clique em **Code → Codespaces → Create codespace on main**.
-2. Aguarde a inicialização automática (o script `.devcontainer/setup.js` instala as dependências e gera `saas-app/.env` com `JWT_SECRET` seguro e `TRUST_PROXY=1`).
-3. No terminal do Codespace, inicie a API ou rode os testes:
+2. O ambiente inicializa automaticamente com **Node.js 22** e **MongoDB 8.0** configurado como Replica Set `rs0` para testes locais com transações ACID.
+3. No terminal do Codespace:
 
 ```bash
 cd saas-app
 npm test
 npm start
 ```
+
+---
 
 ## Principais Endpoints
 

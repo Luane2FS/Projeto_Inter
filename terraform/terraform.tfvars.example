@@ -1,0 +1,33 @@
+# ==============================================================================
+# terraform.tfvars.example - Arquivo de Exemplo para Configuração de Variáveis
+# Copie este arquivo para 'terraform.tfvars' e ajuste com seus dados antes do deploy
+# ==============================================================================
+
+# Região da AWS onde os recursos serão criados
+aws_region = "us-east-1"
+
+# Identificação do projeto
+project_name = "projeto-inter-capacita"
+environment  = "prod"
+
+# Endereçamento de rede (conforme especificação da Unidade 04)
+vpc_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"
+availability_zone  = "us-east-1a"
+
+# Tipo da instância (Free Tier)
+instance_type = "t2.micro"
+
+# IMPORTANTE PARA SEGURANÇA:
+# Descubra seu IP público executando: curl ifconfig.me
+# e substitua abaixo (ex: "177.100.20.10/32"). Para testes amplos utilize "0.0.0.0/0".
+admin_ssh_ip = "0.0.0.0/0"
+
+# Geração automática da chave SSH pelo Terraform (true = gera arquivo .pem localmente)
+create_ssh_key = true
+
+# URL do repositório da aplicação para deploy automatizado na EC2
+github_repo_url = "https://github.com/Luane2FS/Projeto_Inter.git"
+
+# Porta da aplicação
+app_port = 3000

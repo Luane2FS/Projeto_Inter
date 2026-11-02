@@ -1,0 +1,88 @@
+# ==============================================================================
+# variables.tf - Definição de Variáveis Parametrizadas
+# Projeto Integrador: Capacita Computação em Nuvem
+# ==============================================================================
+
+variable "aws_region" {
+  description = "Região da AWS onde a infraestrutura será provisionada (ex: us-east-1)"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "project_name" {
+  description = "Nome base do projeto para prefixo e tags de identificação dos recursos"
+  type        = string
+  default     = "projeto-inter-capacita"
+}
+
+variable "environment" {
+  description = "Identificador do ambiente de implantação (ex: dev, test, prod)"
+  type        = string
+  default     = "prod"
+}
+
+# ------------------------------------------------------------------------------
+# Parâmetros de Rede (VPC e Sub-rede)
+# ------------------------------------------------------------------------------
+
+variable "vpc_cidr" {
+  description = "Bloco de endereçamento CIDR da VPC (exigência do projeto: 10.0.0.0/16)"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "public_subnet_cidr" {
+  description = "Bloco CIDR da sub-rede pública (exigência do projeto: 10.0.1.0/24)"
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "availability_zone" {
+  description = "Zona de Disponibilidade (AZ) para alocação da sub-rede pública"
+  type        = string
+  default     = "us-east-1a"
+}
+
+# ------------------------------------------------------------------------------
+# Parâmetros Computacionais (EC2 e Chaves SSH)
+# ------------------------------------------------------------------------------
+
+variable "instance_type" {
+  description = "Tipo da instância EC2 (exigência do projeto: t2.micro elegível ao Free Tier)"
+  type        = string
+  default     = "t2.micro"
+}
+
+variable "admin_ssh_ip" {
+  description = "Endereço IP público do administrador com máscara /32 para restringir acesso SSH (obtido via: curl ifconfig.me)"
+  type        = string
+  default     = "0.0.0.0/0" # Recomenda-se substituir pelo seu IP real ex: 177.100.20.10/32 no terraform.tfvars
+}
+
+variable "create_ssh_key" {
+  description = "Se true, o Terraform gera automaticamente um novo par de chaves RSA 2048 e salva o arquivo .pem localmente"
+  type        = bool
+  default     = true
+}
+
+variable "existing_key_name" {
+  description = "Nome de um Key Pair já existente no console da AWS (usado se create_ssh_key for false)"
+  type        = string
+  default     = ""
+}
+
+# ------------------------------------------------------------------------------
+# Parâmetros da Aplicação e Deploy
+# ------------------------------------------------------------------------------
+
+variable "github_repo_url" {
+  description = "URL do repositório Git para clonagem da aplicação no provisionamento automatizado"
+  type        = string
+  default     = "https://github.com/Luane2FS/Projeto_Inter.git"
+}
+
+variable "app_port" {
+  description = "Porta HTTP em que a API SaaS responde"
+  type        = number
+  default     = 3000
+}

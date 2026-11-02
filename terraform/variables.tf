@@ -53,13 +53,19 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
+variable "ami_id" {
+  description = "ID específico da AMI Amazon Linux 2 (opcional conforme slide 6; se vazio, busca automaticamente a AMI mais recente)"
+  type        = string
+  default     = ""
+}
+
 variable "admin_ssh_ip" {
-  description = "Endereço IP público do administrador com máscara /32 para restringir acesso SSH (obtido via: curl -4 ifconfig.me)"
+  description = "Endereço IPv4 válido do administrador com máscara /32 para restringir acesso SSH (obtido via: curl -4 ifconfig.me)"
   type        = string
 
   validation {
-    condition     = can(regex("^(\\d{1,3}\\.){3}\\d{1,3}/\\d{1,2}$", var.admin_ssh_ip)) && var.admin_ssh_ip != "0.0.0.0/0"
-    error_message = "Por segurança (requisito da Unidade 04), 'admin_ssh_ip' deve ser o seu IP público com máscara /32 (ex: 187.78.167.114/32). Não utilize 0.0.0.0/0 para SSH."
+    condition     = can(cidrnetmask(var.admin_ssh_ip)) && endswith(var.admin_ssh_ip, "/32")
+    error_message = "Por segurança, 'admin_ssh_ip' deve ser um IPv4 válido com máscara /32 (ex: 187.78.167.114/32)."
   }
 }
 

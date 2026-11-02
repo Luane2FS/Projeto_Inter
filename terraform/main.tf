@@ -136,10 +136,11 @@ resource "local_sensitive_file" "private_key_pem" {
 }
 
 # ------------------------------------------------------------------------------
-# 7. Resolução Dinâmica da AMI Oficial Amazon Linux 2
-# Localiza a versão mais recente e estável da AMI oficial mantida pela AWS
+# 7. Resolução da AMI Oficial Amazon Linux 2
+# Permite informar a AMI via var.ami_id (slide 6) ou resolver dinamicamente a mais recente
 # ------------------------------------------------------------------------------
 data "aws_ami" "amazon_linux_2" {
+  count       = var.ami_id == "" ? 1 : 0
   most_recent = true
   owners      = ["amazon"]
 
@@ -159,7 +160,7 @@ data "aws_ami" "amazon_linux_2" {
 # Máquina t2.micro elegível ao Free Tier com provisionamento automatizado de Docker
 # ------------------------------------------------------------------------------
 resource "aws_instance" "app_server" {
-  ami                         = data.aws_ami.amazon_linux_2.id
+  ami                         = var.ami_id != "" ? var.ami_id : data.aws_ami.amazon_linux_2[0].id
   instance_type               = var.instance_type
   subnet_id                   = aws_subnet.public.id
   vpc_security_group_ids      = [aws_security_group.app_sg.id]

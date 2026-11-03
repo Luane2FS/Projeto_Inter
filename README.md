@@ -85,6 +85,7 @@ Projeto_Inter/
 │   ├── main.tf                     # Definição de VPC, Subnet, SG, EBS e EC2 (AL2023)
 │   ├── variables.tf                # Variáveis parametrizadas (instance_type: t3.micro)
 │   ├── outputs.tf                  # Saídas de infraestrutura (IPs, URLs de health e SSH)
+│   ├── terraform.tfvars.example    # Modelo de variáveis (copie para terraform.tfvars)
 │   └── scripts/
 │       └── user_data.sh.tftpl      # Script de inicialização automatizada da instância
 ├── test-scripts/                   # Suíte de testes de ponta a ponta (E2E)
@@ -96,7 +97,6 @@ Projeto_Inter/
 │   ├── test-concurrency.js         # Concorrência atômica sob limite de vagas
 │   └── test-rate-limit.js          # Validação de Rate Limiting e HTTP 429
 ├── docker-compose.yml              # Orquestração da API e MongoDB em 2 redes
-├── package.json                    # Gerenciador de tarefas raiz
 └── README.md                       # Documentação principal do projeto
 ```
 
@@ -181,17 +181,21 @@ O diretório `terraform/` contém a automação completa da infraestrutura na nu
 ### Parâmetros Configuráveis (`terraform/variables.tf`)
 
 * `aws_region`: Região da AWS (padrão: `us-east-1`).
-* `instance_type`: Tipo de instância EC2 (padrão: **`t3.micro`** com 2 vCPUs e 1 GB RAM, elegível ao Free Tier nos primeiros 12 meses de novas contas e com CPU em modo standard).
-* `ami_id`: AMI específica (padrão vazio: resolve automaticamente a AMI oficial mais recente do **Amazon Linux 2023**).
+* `instance_type`: Tipo de instância EC2 (padrão: **`t3.micro`** com 2 vCPUs e 1 GB RAM, elegível ao Free Tier atual da AWS em substituição à antiga `t2.micro`, com CPU configurada em modo `standard` sem cobrança excedente).
+* `ami_id`: AMI específica (padrão vazio: resolve automaticamente a AMI oficial mais recente do **Amazon Linux 2023**, adotado em substituição ao Amazon Linux 2 devido ao fim de suporte/EOL do AL2).
 * `mongo_data_volume_size`: Tamanho em GB do volume EBS independente (padrão: `10` GB).
 * `api_ingress_cidr`: CIDR permitido para acessar a API em HTTP (padrão restrito ao IP do operador `/32` para proteção do tráfego).
 
+> **Nota sobre `terraform.tfvars`:** Por boas práticas de segurança (evitando expor o IP público `/32` do operador no controle de versão), `*.tfvars` consta no `.gitignore` e o repositório versiona o modelo [`terraform/terraform.tfvars.example`](terraform/terraform.tfvars.example).
+
 ### Passo a Passo de Provisionamento
 
-1. Acesse o diretório do Terraform:
+1. Acesse o diretório do Terraform e configure seu arquivo `terraform.tfvars`:
 
 ```bash
 cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edite admin_ssh_ip em terraform.tfvars com seu IPv4 público (ex.: "$(curl -4 -s ifconfig.me)/32")
 ```
 
 2. Inicialize o Terraform para baixar os providers (`aws`, `tls`, `local`):
@@ -276,7 +280,7 @@ node ../test-scripts/run-all.js
 A coleção oficial do Postman está versionada no diretório [`postman/`](postman/):
 
 * **[`postman/SaaS-App.postman_collection.json`](postman/SaaS-App.postman_collection.json)**: Contém todas as requisições configuradas com parâmetros, corpos de exemplo e scripts de teste de resposta.
-* **[`postman/README.md`](postman/README.md)**: Guia passo a passo de importação, variáveis de ambiente (`baseUrl`, `adminToken`) e fluxos de teste.
+* **[`postman/README.md`](postman/README.md)**: Guia passo a passo de importação, variáveis de ambiente (`baseUrl`, `token`, `memberToken`, `tenantId`) e fluxos de teste.
 
 ---
 
@@ -293,7 +297,7 @@ Toda a documentação técnica exigida pelo curso está consolidada na pasta `do
 
 * **Evidências de Execução na AWS (`docs/evidencias/`)**:
   - [`terraform_init.txt`](docs/evidencias/terraform_init.txt): Sucesso na inicialização e download dos provedores.
-  - [`terraform_plan.txt`](docs/evidencias/terraform_plan.txt): Plano formal de provisionamento dos 11 recursos.
+  - [`terraform_plan.txt`](docs/evidencias/terraform_plan.txt): Plano formal de provisionamento dos 12 recursos.
   - [`terraform_apply.txt`](docs/evidencias/terraform_apply.txt): Execução do apply com criação da instância e volume EBS.
   - [`validacao_ssh.txt`](docs/evidencias/validacao_ssh.txt): Comprovação de acesso SSH, kernel AL2023, montagem de `/mnt/mongo-data`, `.env` restrito e contêineres ativos.
   - [`testes_api_ec2.txt`](docs/evidencias/testes_api_ec2.txt): 45 de 45 passos aprovados executados diretamente contra a API pública na AWS.

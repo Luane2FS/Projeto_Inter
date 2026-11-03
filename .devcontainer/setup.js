@@ -16,10 +16,15 @@ execFileSync(nodeCmd, ['scripts/setup-env.js', '--yes'], { cwd: saasAppDir, stdi
 
 if (fs.existsSync(envPath)) {
   let envContent = fs.readFileSync(envPath, 'utf8');
-  if (/^TRUST_PROXY=$/m.test(envContent) || !/^TRUST_PROXY=/m.test(envContent)) {
+  if (/^TRUST_PROXY=$/m.test(envContent)) {
     envContent = envContent.replace(/^TRUST_PROXY=.*$/m, 'TRUST_PROXY=1');
     fs.writeFileSync(envPath, envContent, 'utf8');
     console.log('[devcontainer] TRUST_PROXY configurado para 1 (proxy reverso do Codespaces).');
+  } else if (!/^TRUST_PROXY=/m.test(envContent)) {
+    const prefix = envContent.endsWith('\n') || envContent.length === 0 ? '' : '\n';
+    envContent = `${envContent}${prefix}TRUST_PROXY=1\n`;
+    fs.writeFileSync(envPath, envContent, 'utf8');
+    console.log('[devcontainer] TRUST_PROXY adicionado como 1 (proxy reverso do Codespaces).');
   }
 }
 

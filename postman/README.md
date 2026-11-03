@@ -17,7 +17,7 @@ A coleção utiliza variáveis para facilitar a alternância entre ambientes:
 | Variável | Valor Padrão Local | Exemplo AWS EC2 | Descrição |
 | :--- | :--- | :--- | :--- |
 | `baseUrl` | `http://localhost:3000` | `http://<IP_PUBLICO_EC2>:3000` | URL base do serviço |
-| `adminToken` | *(preenchido no login)* | *(preenchido no login)* | Token JWT do usuário administrador |
+| `token` | *(preenchido no login)* | *(preenchido no login)* | Token JWT do usuário administrador |
 | `memberToken` | *(preenchido no login)* | *(preenchido no login)* | Token JWT do usuário membro |
 | `tenantId` | *(preenchido no onboarding)* | *(preenchido no onboarding)* | Identificador do tenant ativo |
 

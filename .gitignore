@@ -37,6 +37,7 @@ npm-debug.log*
 
 # Estado local e segredos do Postman
 .postman/
+postman/collections/
 postman/environments/
 postman/globals/
 

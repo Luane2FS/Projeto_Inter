@@ -50,6 +50,7 @@ services:
       ALLOW_DIRECT_PLAN_CHANGE: "false"
       RATE_LIMIT_STORE: "mongodb"
       CORS_ORIGIN: "*"
+      TRUST_PROXY: "${TRUST_PROXY:-}"
     depends_on:
       mongodb:
         condition: service_healthy

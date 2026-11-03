@@ -6,12 +6,12 @@ Infraestrutura: AWS EC2 (Amazon Linux 2023) + EBS + VPC + Security Group
 
 [NOTA EXPLICATIVA SOBRE AS ETAPAS DE EXECUÇÃO]
 O histórico de implantação da infraestrutura compreende duas etapas:
-1. ETAPA 1 (Provisionamento Completo): Criação dos 11 recursos previstos no terraform plan.
+1. ETAPA 1 (Provisionamento Completo): Criação dos 12 recursos previstos no terraform plan.
 2. ETAPA 2 (Hardening & Migração Incremental): Substituição da EC2 para Amazon Linux 2023,
    anexo do volume EBS desacoplado (10 GB gp3) e endurecimento de regras do Security Group.
 
 ----------------------------------------------------------------
-ETAPA 1: PROVISIONAMENTO DA INFRAESTRUTURA COMPLETA (11 RECURSOS)
+ETAPA 1: PROVISIONAMENTO DA INFRAESTRUTURA COMPLETA (12 RECURSOS)
 ----------------------------------------------------------------
 $ terraform apply -auto-approve
 
@@ -44,7 +44,7 @@ aws_volume_attachment.mongo_data_attach: Creating...
 aws_volume_attachment.mongo_data_attach: Still creating... [10s elapsed]
 aws_volume_attachment.mongo_data_attach: Creation complete after 12s [id=vai-3963028747]
 
-Apply complete! Resources: 11 added, 0 changed, 0 destroyed.
+Apply complete! Resources: 12 added, 0 changed, 0 destroyed.
 
 ----------------------------------------------------------------
 ETAPA 2: APLICAÇÃO DE HARDENING, AL2023 E DESACOPLAMENTO EBS

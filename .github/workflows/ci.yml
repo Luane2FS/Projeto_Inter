@@ -11,7 +11,7 @@ permissions:
 jobs:
   terraform:
     name: Terraform Quality & Validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Checkout repository
@@ -36,7 +36,7 @@ jobs:
 
   test:
     name: API Tests (Unit, E2E & Standalone)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       NODE_ENV: test
@@ -74,6 +74,12 @@ jobs:
         env:
           STANDALONE_MONGO_URI: mongodb://127.0.0.1:27018/saas_standalone_ci
         run: npm run test:standalone --prefix saas-app
+
+      - name: Dump MongoDB container logs on failure
+        if: failure()
+        run: |
+          docker compose -f .devcontainer/docker-compose.yml logs || true
+          docker compose -f .github/docker-compose.standalone.yml logs || true
 
       - name: Stop MongoDB instances
         if: always()

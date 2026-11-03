@@ -11,6 +11,8 @@ services:
     image: mongo:8.0
     container_name: saas-mongodb
     restart: unless-stopped
+    environment:
+      GLIBC_TUNABLES: "glibc.pthread.rseq=1"
     command: ["mongod", "--bind_ip_all"]
     # Sem mapeamento de porta externa no host: isolamento total com internal: true
     volumes:

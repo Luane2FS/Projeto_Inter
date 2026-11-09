@@ -1,57 +1,101 @@
 ================================================================
   TESTE DE VALIDAÇÃO DE IMPLANTAÇÃO REAL EM NUVEM AWS (EC2 AL2023)
-  Data: 02/11/2026
+  Data: 07/11/2026
   Sistema Operacional: Amazon Linux 2023 (AL2023 x86_64)
-  Instância: i-089bd54aa9639c3bf (t3.micro - us-east-1)
-  IP Público: 35.170.55.119:3000
-  Volume EBS Persistente Desacoplado: vol-083972d403ed9c951 (/mnt/mongo-data - 10 GB gp3)
-  Security Group: sg-036e873170336bfb6 (Acesso API restrito a 187.78.167.114/32)
+  Instância: i-05c5d7774594c0db2 (t3.micro - us-east-1)
+  IP Público: 32.196.120.219:3000
+  Volume EBS Persistente Desacoplado: vol-0fa430e1a5e97b89b (/mnt/mongo-data - 10 GB gp3)
+  Security Group: sg-07da964e15ea0bc2e (Acesso API restrito a 200.149.63.103/32)
 ================================================================
 
 1. CONSULTAS DE ENDPOINTS BÁSICOS:
 
-GET http://35.170.55.119:3000/health
+GET http://32.196.120.219:3000/health
 HTTP/1.1 200 OK
-{
-  "status": "ok",
-  "live": true,
-  "ready": true,
-  "dependencies": {
-    "mongodb": "ok"
-  }
-}
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: no-referrer
+Cache-Control: no-store
+Pragma: no-cache
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Expose-Headers: X-Total-Count, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Retry-After
+Content-Type: application/json; charset=utf-8
+Content-Length: 72
+ETag: W/"48-nPtB3QX9h8Xbe+gJabsxiGQJY8Y"
+Date: Sat, 07 Nov 2026 11:12:36 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
 
-GET http://35.170.55.119:3000/health/live
-HTTP/1.1 200 OK
-{
-  "status": "ok"
-}
+{"status":"ok","live":true,"ready":true,"dependencies":{"mongodb":"ok"}}
 
-GET http://35.170.55.119:3000/health/ready
+GET http://32.196.120.219:3000/health/live
 HTTP/1.1 200 OK
-{
-  "status": "ready",
-  "dependencies": {
-    "mongodb": "ok"
-  }
-}
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: no-referrer
+Cache-Control: no-store
+Pragma: no-cache
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Expose-Headers: X-Total-Count, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Retry-After
+Content-Type: application/json; charset=utf-8
+Content-Length: 15
+ETag: W/"f-VaSQ4oDUiZblZNAEkkN+sX+q3Sg"
+Date: Sat, 07 Nov 2026 11:12:36 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
 
-GET http://35.170.55.119:3000/plans
+{"status":"ok"}
+
+GET http://32.196.120.219:3000/health/ready
 HTTP/1.1 200 OK
-[
-  {
-    "_id": "6ae8f561b89fb30ef08a06b1",
-    "name": "freemium",
-    "price": 0,
-    "maxUsers": 3
-  },
-  {
-    "_id": "6ae8f561b89fb30ef08a06b2",
-    "name": "premium",
-    "price": 99.9,
-    "maxUsers": null
-  }
-]
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: no-referrer
+Cache-Control: no-store
+Pragma: no-cache
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Expose-Headers: X-Total-Count, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Retry-After
+Content-Type: application/json; charset=utf-8
+Content-Length: 50
+ETag: W/"32-jZzjl/KWcg+JxoH5pxdtAbMtjGg"
+Date: Sat, 07 Nov 2026 11:12:36 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"status":"ready","dependencies":{"mongodb":"ok"}}
+
+GET http://32.196.120.219:3000/plans
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Referrer-Policy: no-referrer
+Cache-Control: no-store
+Pragma: no-cache
+Content-Security-Policy: default-src 'none'; frame-ancestors 'none'
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Expose-Headers: X-Total-Count, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Retry-After
+RateLimit-Limit: 120
+RateLimit-Remaining: 35
+RateLimit-Reset: 30
+Content-Type: application/json; charset=utf-8
+Content-Length: 314
+ETag: W/"13a-gnKm2l6ZVv/WsX1BvwDScfpsszI"
+Date: Sat, 07 Nov 2026 11:12:36 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+[{"_id":"6aeee95dd0291087ca6dfc5a","name":"freemium","createdAt":"2026-11-07T09:03:22.360Z","maxUsers":3,"price":0,"updatedAt":"2026-11-07T09:03:22.360Z"},{"_id":"6aeee95dd0291087ca6dfc5b","name":"premium","createdAt":"2026-11-07T09:03:22.360Z","maxUsers":null,"price":99.9,"updatedAt":"2026-11-07T09:03:22.360Z"}]
 
 ================================================================
 2. EXECUÇÃO DA SUÍTE INTEGRADA (run-all.js via Internet autorizada):
@@ -65,111 +109,111 @@ HTTP/1.1 200 OK
   TESTE 1: SMOKE & HEALTH CHECK DA API
 ================================================================
 
-  [PASS]  1.1. Consulta lista de planos cadastrados no MongoDB (/plans) (91ms)
-  [PASS]  1.2. Consulta plano individual (/plans/freemium) (83ms)
-  [PASS]  1.3. Rejeita consulta de plano inexistente com 400 (81ms)
-  [PASS]  1.4. Validação de cabeçalhos de segurança (securityHeaders nativos) (79ms)
-  [PASS]  1.5. Validação de cabeçalhos do Rate Limiter padrão IETF (78ms)
-  [PASS]  1.6. Rota inexistente retorna HTTP 404 padronizado (77ms)
-  [PASS]  1.7. Proteção contra DoS por payload excessivo (> 10kb) (83ms)
+  [PASS]  1.1. Consulta lista de planos cadastrados no MongoDB (/plans) (184ms)
+  [PASS]  1.2. Consulta plano individual (/plans/freemium) (107ms)
+  [PASS]  1.3. Rejeita consulta de plano inexistente com 400 (99ms)
+  [PASS]  1.4. Validação de cabeçalhos de segurança (securityHeaders nativos) (96ms)
+  [PASS]  1.5. Validação de cabeçalhos do Rate Limiter padrão IETF (90ms)
+  [PASS]  1.6. Rota inexistente retorna HTTP 404 padronizado (98ms)
+  [PASS]  1.7. Proteção contra DoS por payload excessivo (> 10kb) (103ms)
 
 ----------------------------------------------------------------
-  TODOS OS PASSOS APROVADOS (7/7) em 572ms
+  TODOS OS PASSOS APROVADOS (7/7) em 777ms
 
 
 ================================================================
   TESTE 2: FLUXO DE ONBOARDING & REGISTRATION TOKEN
 ================================================================
 
-  [PASS]  2.1. Bloqueia criação pública de tenant em plano pago (premium) com 403 (188ms)
-  [PASS]  2.2. Criação de tenant freemium retorna registrationToken de uso único (188ms)
-  [PASS]  2.3. Bloqueia 1º registro de usuário sem registrationToken com 403 (83ms)
-  [PASS]  2.4. Bloqueia registro com token em formato malformado com 400 (81ms)
-  [PASS]  2.5. Bloqueia registro com token incorreto com 403 (232ms)
-  [PASS]  2.6. Conclui 1º registro com token válido e atribui papel de admin (235ms)
-  [PASS]  2.7. Bloqueia reuso do registrationToken em novo cadastro público com 403 (164ms)
-  [PASS]  2.8. Login do admin recém-criado gera JWT válido com role: admin (175ms)
-  [PASS]  2.9. Limpeza: remoção do tenant de teste criado (85ms)
+  [PASS]  2.1. Bloqueia criação pública de tenant em plano pago (premium) com 403 (120ms)
+  [PASS]  2.2. Criação de tenant freemium retorna registrationToken de uso único (142ms)
+  [PASS]  2.3. Bloqueia 1º registro de usuário sem registrationToken com 403 (91ms)
+  [PASS]  2.4. Bloqueia registro com token em formato malformado com 400 (95ms)
+  [PASS]  2.5. Bloqueia registro com token incorreto com 403 (197ms)
+  [PASS]  2.6. Conclui 1º registro com token válido e atribui papel de admin (202ms)
+  [PASS]  2.7. Bloqueia reuso do registrationToken em novo cadastro público com 403 (178ms)
+  [PASS]  2.8. Login do admin recém-criado gera JWT válido com role: admin (227ms)
+  [PASS]  2.9. Limpeza: remoção do tenant de teste criado (111ms)
 
 ----------------------------------------------------------------
-  TODOS OS PASSOS APROVADOS (9/9) em 1431ms
+  TODOS OS PASSOS APROVADOS (9/9) em 1363ms
 
 
 ================================================================
   TESTE 3: CONTROLE DE ACESSO BASEADO EM PAPÉIS (RBAC)
 ================================================================
 
-  [PASS]  3.1. Setup: Cria tenant e registra administrador inicial (414ms)
-  [PASS]  3.2. Admin adiciona um novo usuário comum (role: member) (398ms)
-  [PASS]  3.3. Membro tenta criar outro usuário (POST /users) -> Bloqueado com 403 (79ms)
-  [PASS]  3.4. Membro tenta excluir o tenant (DELETE /tenants/:id) -> Bloqueado com 403 (79ms)
-  [PASS]  3.5. Membro tenta atualizar dados do tenant (PUT/PATCH) -> Bloqueado com 403 (80ms)
-  [PASS]  3.6. Membro tenta se autopromover para admin -> Bloqueado com 403 (79ms)
-  [PASS]  3.7. Membro tenta excluir o administrador -> Bloqueado com 403 (79ms)
-  [PASS]  3.8. Membro atualiza seus próprios dados cadastrais (nome) -> Sucesso 200 (84ms)
-  [PASS]  3.9. Admin tenta autoexclusão da própria conta -> Bloqueado com 400 (83ms)
-  [PASS]  3.10. Admin tenta se autorebaixar para member sendo o único admin -> Bloqueado com 400 (83ms)
-  [PASS]  3.11. Admin remove o usuário membro e token do membro é revogado imediatamente (401) (164ms)
-  [PASS]  3.12. Limpeza: remoção do tenant de teste (82ms)
+  [PASS]  3.1. Setup: Cria tenant e registra administrador inicial (583ms)
+  [PASS]  3.2. Admin adiciona um novo usuário comum (role: member) (459ms)
+  [PASS]  3.3. Membro tenta criar outro usuário (POST /users) -> Bloqueado com 403 (101ms)
+  [PASS]  3.4. Membro tenta excluir o tenant (DELETE /tenants/:id) -> Bloqueado com 403 (98ms)
+  [PASS]  3.5. Membro tenta atualizar dados do tenant (PUT/PATCH) -> Bloqueado com 403 (97ms)
+  [PASS]  3.6. Membro tenta se autopromover para admin -> Bloqueado com 403 (87ms)
+  [PASS]  3.7. Membro tenta excluir o administrador -> Bloqueado com 403 (96ms)
+  [PASS]  3.8. Membro atualiza seus próprios dados cadastrais (nome) -> Sucesso 200 (92ms)
+  [PASS]  3.9. Admin tenta autoexclusão da própria conta -> Bloqueado com 400 (94ms)
+  [PASS]  3.10. Admin tenta se autorebaixar para member sendo o único admin -> Bloqueado com 400 (89ms)
+  [PASS]  3.11. Admin remove o usuário membro e token do membro é revogado imediatamente (401) (184ms)
+  [PASS]  3.12. Limpeza: remoção do tenant de teste (97ms)
 
 ----------------------------------------------------------------
-  TODOS OS PASSOS APROVADOS (12/12) em 1704ms
+  TODOS OS PASSOS APROVADOS (12/12) em 2077ms
 
 
 ================================================================
   TESTE 4: ISOLAMENTO MULTITENANT & SEGURANÇA CROSS-TENANT
 ================================================================
 
-  [PASS]  4.1. Setup: Cria Tenant A e Tenant B com seus respectivos administradores (1124ms)
-  [PASS]  4.2. Admin A tenta ler dados do Tenant B (GET /tenants/:idB) -> Bloqueado com 403 (79ms)
-  [PASS]  4.3. Admin A tenta atualizar o Tenant B (PATCH /tenants/:idB) -> Bloqueado com 403 (79ms)
-  [PASS]  4.4. Admin A tenta excluir o Tenant B (DELETE /tenants/:idB) -> Bloqueado com 403 (79ms)
-  [PASS]  4.5. Admin A tenta listar usuários do Tenant B (/tenants/:idB/users) -> Bloqueado com 403 (82ms)
-  [PASS]  4.6. Admin A tenta consultar usuário de Tenant B (GET /users/:idB) -> Não encontrado (404) (86ms)
-  [PASS]  4.7. Admin A tenta excluir usuário de Tenant B (DELETE /users/:idB) -> Não encontrado (404) (81ms)
-  [PASS]  4.8. Listagem de usuários do Admin A retorna estritamente os usuários do Tenant A (174ms)
-  [PASS]  4.9. Mesma pessoa se cadastra em Tenant A e Tenant B com o mesmo e-mail (unicidade por tenant) (855ms)
-  [PASS]  4.10. Limpeza: remoção dos tenants A e B criados para o teste (184ms)
+  [PASS]  4.1. Setup: Cria Tenant A e Tenant B com seus respectivos administradores (1129ms)
+  [PASS]  4.2. Admin A tenta ler dados do Tenant B (GET /tenants/:idB) -> Bloqueado com 403 (85ms)
+  [PASS]  4.3. Admin A tenta atualizar o Tenant B (PATCH /tenants/:idB) -> Bloqueado com 403 (96ms)
+  [PASS]  4.4. Admin A tenta excluir o Tenant B (DELETE /tenants/:idB) -> Bloqueado com 403 (85ms)
+  [PASS]  4.5. Admin A tenta listar usuários do Tenant B (/tenants/:idB/users) -> Bloqueado com 403 (96ms)
+  [PASS]  4.6. Admin A tenta consultar usuário de Tenant B (GET /users/:idB) -> Não encontrado (404) (88ms)
+  [PASS]  4.7. Admin A tenta excluir usuário de Tenant B (DELETE /users/:idB) -> Não encontrado (404) (95ms)
+  [PASS]  4.8. Listagem de usuários do Admin A retorna estritamente os usuários do Tenant A (116ms)
+  [PASS]  4.9. Mesma pessoa se cadastra em Tenant A e Tenant B com o mesmo e-mail (unicidade por tenant) (828ms)
+  [PASS]  4.10. Limpeza: remoção dos tenants A e B criados para o teste (186ms)
 
 ----------------------------------------------------------------
-  TODOS OS PASSOS APROVADOS (10/10) em 2823ms
+  TODOS OS PASSOS APROVADOS (10/10) em 2804ms
 
 
 ================================================================
   TESTE 5: CONCORRÊNCIA ATÔMICA, LIMITES DE PLANO E PROTEÇÃO DE ADMINS
 ================================================================
 
-  [PASS]  5.1. Setup: Cria tenant Freemium (limite 3 usuários) e 1º Admin (412ms)
-  [PASS]  5.2. Dispara 5 criações SIMULTÂNEAS de membros -> Exatamente 2 vagas restantes preenchidas (663ms)
-  [PASS]  5.3. Dispara 4 promoções SIMULTÂNEAS do mesmo membro -> adminCount não sofre inflação (102ms)
-  [PASS]  5.4. Admin 1 e Admin 2 tentam exclusão mútua SIMULTÂNEA -> Apenas 1 é excluído e último admin é protegido (467ms)
-  [PASS]  5.5. Limpeza: remoção do tenant de teste (617ms)
+  [PASS]  5.1. Setup: Cria tenant Freemium (limite 3 usuários) e 1º Admin (456ms)
+  [PASS]  5.2. Dispara 5 criações SIMULTÂNEAS de membros -> Exatamente 2 vagas restantes preenchidas (776ms)
+  [PASS]  5.3. Dispara 4 promoções SIMULTÂNEAS do mesmo membro -> adminCount não sofre inflação (117ms)
+  [PASS]  5.4. Admin 1 e Admin 2 tentam exclusão mútua SIMULTÂNEA -> Apenas 1 é excluído e último admin é protegido (498ms)
+  [PASS]  5.5. Limpeza: remoção do tenant de teste (271ms)
 
 ----------------------------------------------------------------
-  TODOS OS PASSOS APROVADOS (5/5) em 2261ms
+  TODOS OS PASSOS APROVADOS (5/5) em 2118ms
 
 
 ================================================================
   TESTE 6: RATE LIMITING & PROTEÇÃO CONTRA ABUSO
 ================================================================
 
-  [PASS]  6.1. Verifica decréscimo progressivo do cabeçalho RateLimit-Remaining (178ms)
-  [PASS]  6.2. Dispara requisições sequenciais até atingir limite e valida HTTP 429 Too Many Requests (1028ms)
+  [PASS]  6.1. Verifica decréscimo progressivo do cabeçalho RateLimit-Remaining (177ms)
+  [PASS]  6.2. Dispara requisições sequenciais até atingir limite e valida HTTP 429 Too Many Requests (903ms)
 
 ----------------------------------------------------------------
-  TODOS OS PASSOS APROVADOS (2/2) em 1206ms
+  TODOS OS PASSOS APROVADOS (2/2) em 1080ms
 
 
 ================================================================
   RELATÓRIO FINAL CONSOLIDADO DE EXECUÇÃO
 ================================================================
 
-  [APROVADO]  1. Smoke & Health Check                    7/7 passos (572ms)
-  [APROVADO]  2. Onboarding & Registration Token         9/9 passos (1431ms)
-  [APROVADO]  3. Controle de Acesso (RBAC)               12/12 passos (1704ms)
-  [APROVADO]  4. Isolamento Multitenant & Cross-Tenant   10/10 passos (2823ms)
-  [APROVADO]  5. Concorrência & Proteção de Admin        5/5 passos (2261ms)
-  [APROVADO]  6. Rate Limiting & Cabeçalhos IETF         2/2 passos (1206ms)
+  [APROVADO]  1. Smoke & Health Check                    7/7 passos (777ms)
+  [APROVADO]  2. Onboarding & Registration Token         9/9 passos (1363ms)
+  [APROVADO]  3. Controle de Acesso (RBAC)               12/12 passos (2077ms)
+  [APROVADO]  4. Isolamento Multitenant & Cross-Tenant   10/10 passos (2804ms)
+  [APROVADO]  5. Concorrência & Proteção de Admin        5/5 passos (2118ms)
+  [APROVADO]  6. Rate Limiting & Cabeçalhos IETF         2/2 passos (1080ms)
 
 ----------------------------------------------------------------
-  SUCESSO TOTAL: 45 de 45 passos aprovados em 10722ms!
+  SUCESSO TOTAL: 45 de 45 passos aprovados em 11121ms!

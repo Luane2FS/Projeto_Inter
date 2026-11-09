@@ -1,8 +1,7 @@
 # Relatório Técnico: Arquitetura em Nuvem para Aplicação SaaS Multitenant
 
 **Projeto Integrador: Residência em TIC 20 / Capacita Computação em Nuvem**  
-**Alunos:** Luane F. e Lucas F.  
-**Orientadores / Professores:** Allberson Dantas e Homero  
+**Autora:** Luane Ferreira da Silva   
 **Repositório Oficial:** [https://github.com/Luane2FS/Projeto_Inter](https://github.com/Luane2FS/Projeto_Inter)  
 
 ---
@@ -133,7 +132,7 @@ A segurança, a operação e a resiliência na nuvem seguem o **Modelo de Respon
 ```
 
 > [!NOTE]
-> Conforme o whitepaper de *Shared Responsibility Model for Resiliency* da AWS, o provedor assegura a disponibilidade física dos componentes de infraestrutura, mas a resiliência da aplicação depende das decisões de arquitetura do cliente (como a distribuição de réplicas em múltiplas AZs e estratégias de contingência). A topologia atual, por operar em Zona de Disponibilidade única visando o Free Tier, concentra o risco operacional na resiliência da zona escolhida (`us-east-1a`).
+> Conforme o whitepaper de *Shared Responsibility Model for Resiliency* da AWS, o provedor assegura a disponibilidade física dos componentes de infraestrutura, mas a resiliência da aplicação depende das decisões de arquitetura do cliente (como a distribuição de réplicas em múltiplas AZs e estratégias de contingência). A topologia atual, por operar em Zona de Disponibilidade única para contenção de custos laboratoriais, concentra o risco operacional na resiliência da zona escolhida (`us-east-1a`).
 
 ---
 
@@ -141,7 +140,7 @@ A segurança, a operação e a resiliência na nuvem seguem o **Modelo de Respon
 
 ### 4.1. Escalabilidade Vertical vs. Escalabilidade Horizontal
 
-- **Cenário Atual (Vertical)**: A infraestrutura inicial adotou a instância `t3.micro` (2 vCPUs, 1 GB RAM). A elegibilidade ao AWS Free Tier (750 horas/mês) aplica-se a contas nos primeiros 12 meses de cadastro. Como as instâncias da família T3 operam por padrão no modo *unlimited* (o que pode acarretar custos adicionais caso o consumo de CPU supere a linha de base), a configuração do Terraform fixou explicitamente o modo de créditos como `standard` (`credit_specification { cpu_credits = "standard" }`). Para aumento de demanda em curto prazo, a escalabilidade vertical é obtida alterando a variável `instance_type` no Terraform para tipos superiores (ex: `t3.small` ou `t3.medium`), acarretando downtime planejado momentâneo para redimensionamento da máquina virtual.
+- **Cenário Atual (Vertical)**: A infraestrutura inicial adotou a instância `t3.micro` (2 vCPUs, 1 GB RAM). Conforme a [documentação oficial da AWS para EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html), a elegibilidade e o período do AWS Free Tier dependem da data de criação da conta e do plano contratado: contas anteriores a 15 de julho de 2025 seguem as regras legadas de 12 meses (até 750 horas/mês), enquanto contas criadas a partir dessa data utilizam o modelo baseado em créditos (por até 6 meses no plano gratuito ou até o término dos créditos). Como as instâncias da família T3 operam por padrão no modo *unlimited*, o Terraform fixa explicitamente `cpu_credits = "standard"`, evitando cobranças por créditos de CPU excedentes — ressalvando-se que isso não garante isenção total de custos para todos os recursos (como IPv4 público, EBS ou tráfego além de franquias/créditos). Para aumento de demanda em curto prazo, a escalabilidade vertical é obtida alterando a variável `instance_type` no Terraform para tipos superiores (ex: `t3.small` ou `t3.medium`), acarretando downtime planejado momentâneo para redimensionamento da máquina virtual.
 - **Cenário de Produção (Horizontal)**: Para ambientes de grande porte, a arquitetura deve evoluir para múltiplas instâncias EC2 em sub-redes privadas distribuídas em diferentes Zonas de Disponibilidade (Multi-AZ), coordenadas por um **Auto Scaling Group (ASG)** e balanceadas por um Application Load Balancer.
 
 ### 4.2. Automação de Inicialização (Bootstrapping) vs. Elasticidade
@@ -152,7 +151,7 @@ A segurança, a operação e a resiliência na nuvem seguem o **Modelo de Respon
 
 ### 4.3. Evolução Arquitetural Corporativa
 
-Enquanto o protótipo acadêmico concentra-se em uma única instância EC2 para respeitar o teto do Free Tier, a transição para um ambiente corporativo de missão crítica contempla:
+Enquanto o protótipo acadêmico concentra-se em uma única instância EC2 para conter custos de laboratório, a transição para um ambiente corporativo de missão crítica contempla:
 1. **Application Load Balancer (ALB)**: Ponto único de entrada em sub-rede pública com terminação TLS/HTTPS (porta 443) via certificado **AWS Certificate Manager (ACM)**.
 2. **Instâncias em Sub-redes Privadas**: As máquinas da aplicação rodam sem IP público, acessando a internet apenas via **NAT Gateway** para atualizações.
 3. **Banco de Dados Gerenciado**: Migração do MongoDB conteinerizado para o **Amazon DocumentDB** ou **MongoDB Atlas**, usufruindo de replicação nativa, backups contínuos e alta disponibilidade gerenciada pelo provedor.
@@ -163,7 +162,7 @@ Enquanto o protótipo acadêmico concentra-se em uma única instância EC2 para 
 
 ## 5. Conclusão
 
-O projeto cumpriu integralmente os objetivos propostos nas Unidades 01, 04 e 05 do programa de capacitação:
+O projeto cumpriu integralmente os objetivos propostos no programa de capacitação:
 1. Uma **aplicação SaaS multitenant robusta**, com modelos relacionais de plano, isolamento lógico e controle de taxas de requisição.
 2. **Conteinerização eficiente via Docker Multi-Stage**, garantindo imagens enxutas e seguras em ambiente de produção.
 3. **Provisionamento 100% reproduzível via Terraform**, criando a infraestrutura de rede e computação na AWS sem necessidade de cliques manuais no console.

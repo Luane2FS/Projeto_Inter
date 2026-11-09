@@ -10,15 +10,15 @@ aws_region = "us-east-1"
 project_name = "projeto-inter-capacita"
 environment  = "prod"
 
-# Endereçamento de rede (conforme especificação da Unidade 04)
+# Endereçamento de rede
 vpc_cidr           = "10.0.0.0/16"
 public_subnet_cidr = "10.0.1.0/24"
 availability_zone  = "us-east-1a"
 
-# Tipo da instância (Free Tier atualizado na AWS: t3.micro)
+# Tipo da instância (t3.micro; elegibilidade ao Free Tier depende da data/plano da conta AWS)
 instance_type = "t3.micro"
 
-# IMPORTANTE PARA SEGURANÇA (Unidade 04):
+# IMPORTANTE PARA SEGURANÇA:
 # Descubra seu IP público executando: curl -4 ifconfig.me
 # Substitua abaixo com máscara /32 (ex: "187.78.167.114/32"). O valor 0.0.0.0/0 é bloqueado por validação.
 admin_ssh_ip = "SEU_IP_AQUI/32"

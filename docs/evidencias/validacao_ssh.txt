@@ -1,58 +1,25 @@
 ================================================================
 EVIDÊNCIA DE VALIDAÇÃO DE CONEXÃO REMOTA SSH NA AWS EC2
 Projeto Integrador: Capacita Computação em Nuvem
-Data: 02/11/2026
-Instância EC2: i-089bd54aa9639c3bf (t3.micro - us-east-1)
-IP Público: 35.170.55.119
+Data: 07/11/2026
+Instância EC2: i-05c5d7774594c0db2 (t3.micro - us-east-1)
+IP Público: 32.196.120.219
 Chave Privada: terraform/projeto-inter-capacita-key.pem (RSA 2048)
 ================================================================
 
-$ ssh -i ./terraform/projeto-inter-capacita-key.pem ec2-user@35.170.55.119
-Last login: Mon Nov  2 21:25:22 2026 from 187.78.167.114
-[ec2-user@ip-10-0-1-238 ~]$ 
-
-[ec2-user@ip-10-0-1-238 ~]$ whoami && hostname -f
+[ec2-user@ip-10-0-1-196 ~]$ whoami && hostname -f
 ec2-user
-ip-10-0-1-238.ec2.internal
-
-[ec2-user@ip-10-0-1-238 ~]$ uname -a
-Linux ip-10-0-1-238.ec2.internal 6.12.113-138.209.amzn2023.x86_64 #1 SMP PREEMPT_DYNAMIC Tue Oct 20 21:57:40 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
-
-[ec2-user@ip-10-0-1-238 ~]$ cat /etc/os-release
+ip-10-0-1-196.ec2.internal
+[ec2-user@ip-10-0-1-196 ~]$ cat /etc/os-release | head -n 6
 NAME="Amazon Linux"
 VERSION="2023"
 ID="amzn"
 ID_LIKE="fedora"
 VERSION_ID="2023"
 PLATFORM_ID="platform:al2023"
-PRETTY_NAME="Amazon Linux 2023.12.20261102"
-ANSI_COLOR="0;33"
-CPE_NAME="cpe:2.3:o:amazon:amazon_linux:2023"
-HOME_URL="https://aws.amazon.com/linux/amazon-linux-2023/"
-DOCUMENTATION_URL="https://docs.aws.amazon.com/linux/"
-SUPPORT_URL="https://aws.amazon.com/premiumsupport/"
-BUG_REPORT_URL="https://github.com/amazonlinux/amazon-linux-2023"
-VENDOR_NAME="AWS"
-VENDOR_URL="https://aws.amazon.com/"
-SUPPORT_END="2029-06-30"
-
-[ec2-user@ip-10-0-1-238 ~]$ uptime
- 21:25:22 up 48 min,  0 users,  load average: 0.14, 0.20, 0.19
-
-[ec2-user@ip-10-0-1-238 ~]$ ip -4 addr show ens5
-2: ens5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 9001 qdisc mq state UP group default qlen 1000
-    altname enp0s5
-    altname eni-001bee402f73808fe
-    altname device-number-0.0
-    inet 10.0.1.238/24 metric 512 brd 10.0.1.255 scope global dynamic ens5
-       valid_lft 2475sec preferred_lft 2475sec
-
-[ec2-user@ip-10-0-1-238 ~]$ df -h / /mnt/mongo-data
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/nvme0n1p1   20G  3.3G   17G  17% /
-/dev/nvme1n1    9.8G  203M  9.5G   3% /mnt/mongo-data
-
-[ec2-user@ip-10-0-1-238 ~]$ lsblk
+[ec2-user@ip-10-0-1-196 ~]$ uptime
+ 11:04:12 up  2:10,  1 user,  load average: 0.13, 0.16, 0.17
+[ec2-user@ip-10-0-1-196 ~]$ lsblk
 NAME          MAJ:MIN RM SIZE RO TYPE MOUNTPOINTS
 nvme0n1       259:0    0  20G  0 disk 
 ├─nvme0n1p1   259:1    0  20G  0 part /
@@ -60,35 +27,30 @@ nvme0n1       259:0    0  20G  0 disk
 └─nvme0n1p128 259:3    0  10M  0 part /boot/efi
 nvme1n1       259:4    0  10G  0 disk /var/lib/docker/volumes/saas-mongo-data/_data
                                       /mnt/mongo-data
-
-[ec2-user@ip-10-0-1-238 ~]$ ls -la /opt/projeto-inter/repo/.env
--rw-------. 1 ec2-user ec2-user 249 Nov  2 20:40 /opt/projeto-inter/repo/.env
-
-[ec2-user@ip-10-0-1-238 ~]$ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-NAMES          STATUS                    PORTS
-saas-api       Up 40 minutes (healthy)   0.0.0.0:3000->3000/tcp, :::3000->3000/tcp
-saas-mongodb   Up 41 minutes (healthy)   
-
-[ec2-user@ip-10-0-1-238 ~]$ docker network ls
-NETWORK ID     NAME                            DRIVER    SCOPE
-ebe317862b64   bridge                          bridge    local
-b49284010375   host                            host      local
-f800da3b103d   none                            null      local
-ee0c2c974c4e   saas-frontend-network           bridge    local
-b6259c57bdd9   saas-internal-backend-network   bridge    local
-
-[ec2-user@ip-10-0-1-238 ~]$ docker inspect saas-mongodb --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}: IP={{$v.IPAddress}} Gateway={{$v.Gateway}}{{end}}'
-saas-internal-backend-network: IP=172.19.0.2 Gateway=
-
-[ec2-user@ip-10-0-1-238 ~]$ curl -s http://localhost:3000/health
+[ec2-user@ip-10-0-1-196 ~]$ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+NAMES          STATUS                 PORTS
+saas-api       Up 2 hours (healthy)   0.0.0.0:3000->3000/tcp, :::3000->3000/tcp
+saas-mongodb   Up 2 hours (healthy)   
+[ec2-user@ip-10-0-1-196 ~]$ curl -s http://localhost:3000/health && echo ""
 {"status":"ok","live":true,"ready":true,"dependencies":{"mongodb":"ok"}}
-
-[ec2-user@ip-10-0-1-238 ~]$ exit
-logout
-Connection to 35.170.55.119 closed.
-
-================================================================
-CONEXÃO SSH VALIDADA COM SUCESSO PELA CHAVE RSA 2048
-Autenticação via chave assimétrica sem senha (Best Practice AWS)
-Instância Amazon Linux 2023 operando com Docker e disco EBS desacoplado
-================================================================
+[ec2-user@ip-10-0-1-196 ~]$ ls -la /opt/projeto-inter/repo/.env && stat /opt/projeto-inter/repo/.env
+-rw-------. 1 ec2-user ec2-user 249 Nov  7 08:57 /opt/projeto-inter/repo/.env
+  File: /opt/projeto-inter/repo/.env
+  Size: 249       	Blocks: 8          IO Block: 4096   regular file
+Device: 10301h/66305d	Inode: 1633709     Links: 1
+Access: (0600/-rw-------)  Uid: ( 1000/ec2-user)   Gid: ( 1000/ec2-user)
+Context: system_u:object_r:system_conf_t:s0
+Access: 2026-11-07 08:57:53.950877127 +0000
+Modify: 2026-11-07 08:57:53.950877127 +0000
+Change: 2026-11-07 08:57:53.950877127 +0000
+ Birth: 2026-11-07 08:57:53.950877127 +0000
+[ec2-user@ip-10-0-1-196 ~]$ sudo stat /mnt/mongo-data
+  File: /mnt/mongo-data
+  Size: 4096      	Blocks: 8          IO Block: 4096   directory
+Device: 10304h/66308d	Inode: 2           Links: 6
+Access: (0700/drwx------)  Uid: (  999/systemd-oom)   Gid: (  999/systemd-oom)
+Context: system_u:object_r:unlabeled_t:s0
+Access: 2026-11-07 09:02:47.236581767 +0000
+Modify: 2026-11-07 11:25:55.632107193 +0000
+Change: 2026-11-07 11:25:55.632107193 +0000
+ Birth: 2026-11-07 08:57:44.000000000 +0000

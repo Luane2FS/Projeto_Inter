@@ -29,7 +29,7 @@ A solução adota uma estratégia em camadas para entrega de nuvem:
 1. **Infraestrutura como Serviço (IaaS)**: Provisionamento automatizado via **Terraform** na AWS:
    - **Rede Virtual**: VPC dedicada (`10.0.0.0/16`), Sub-rede pública (`10.0.1.0/24`) na Zona de Disponibilidade `us-east-1a`, Internet Gateway e Tabela de Rotas com saída pública.
    - **Segurança de Borda**: Security Group aplicando o **princípio do menor privilégio** (`api_ingress_cidr`), restringindo acessos administrativos (SSH - porta 22) e da API (porta 3000) ao IP do operador por padrão. O protótipo acadêmico opera em protocolo HTTP, com as portas 443 e 80 pré-alocadas no Security Group para futura evolução com Application Load Balancer (ALB) e terminação TLS.
-   - **Computação**: Instância EC2 **`t3.micro`** (2 vCPUs, 1 GB RAM com Amazon Linux 2023 - AL2023). A elegibilidade ao AWS Free Tier (750h/mês) aplica-se a contas nos primeiros 12 meses; a instância é configurada com `cpu_credits = "standard"` para prevenir cobranças por uso excedente de CPU (modo *unlimited*).
+   - **Computação**: Instância EC2 **`t3.micro`** (2 vCPUs, 1 GB RAM com Amazon Linux 2023 - AL2023). A elegibilidade e a duração do [AWS Free Tier para EC2](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-free-tier-usage.html) variam conforme o plano e a data de abertura da conta (regras legadas de 12 meses / 750h mensais para contas anteriores a 15/07/2025; oferta baseada em créditos por até 6 meses ou até o esgotamento dos créditos para contas novas). O modo `cpu_credits = "standard"` evita cobranças por créditos de CPU excedentes, mas não garante ausência total de custos em todos os recursos (ex.: IPv4 público, EBS ou consumo além dos créditos/franquias).
    - **Armazenamento Desacoplado**: Volume EBS independente de 10 GB (`gp3`, criptografado) com montagem automática fail-fast e permissões restritas `0700` (UID 999). Preserva dados entre reinicializações e substituições da instância EC2, exigindo snapshots periódicos (AWS Backup/DLM) para proteção definitiva contra desastres.
    - **Automação de Inicialização (Bootstrapping)**: Script `user_data.sh.tftpl` que instala Docker via `dnf`, monta o disco EBS persistente com validação estrita, gera credenciais fortes com permissão restrita `0600` para o `.env` e sobe os serviços sem intervenção manual.
 
@@ -62,11 +62,11 @@ Projeto_Inter/
 │       └── ci.yml                  # Pipeline CI: validação de Terraform e testes da API
 ├── docs/                           # Documentação e entregáveis do projeto
 │   ├── relatorio-tecnico.md        # Relatório técnico completo de arquitetura e infraestrutura
+│   ├── relatorio-iac-terraform.md  # Relatório específico (IaC com Terraform na AWS)
 │   ├── OPERATIONS.md               # Procedimentos operacionais, backup e observabilidade
 │   └── evidencias/                 # Logs reais de execução na nuvem AWS
 │       ├── terraform_init.txt      # Inicialização dos provedores Terraform
-│       ├── terraform_plan.txt      # Plano de execução da infraestrutura AWS
-│       ├── terraform_apply.txt     # Saída do provisionamento da EC2 t3.micro
+│       ├── terraform_apply.txt     # Plano de execução e saída do provisionamento da EC2 t3.micro
 │       ├── validacao_ssh.txt       # Sessão SSH comprovando AL2023, EBS e Docker
 │       └── testes_api_ec2.txt      # Execução da suíte E2E (45/45) contra o IP público
 ├── postman/                        # Coleção Postman oficial da API
@@ -181,7 +181,7 @@ O diretório `terraform/` contém a automação completa da infraestrutura na nu
 ### Parâmetros Configuráveis (`terraform/variables.tf`)
 
 * `aws_region`: Região da AWS (padrão: `us-east-1`).
-* `instance_type`: Tipo de instância EC2 (padrão: **`t3.micro`** com 2 vCPUs e 1 GB RAM, elegível ao Free Tier atual da AWS em substituição à antiga `t2.micro`, com CPU configurada em modo `standard` sem cobrança excedente).
+* `instance_type`: Tipo de instância EC2 (padrão: **`t3.micro`** com 2 vCPUs e 1 GB RAM em substituição à `t2.micro`; a elegibilidade ao Free Tier varia conforme o plano e a data de criação da conta na AWS, e `cpu_credits = "standard"` limita cobranças por *burst* de CPU excedente sem isentar todos os recursos de custo).
 * `ami_id`: AMI específica (padrão vazio: resolve automaticamente a AMI oficial mais recente do **Amazon Linux 2023**, adotado em substituição ao Amazon Linux 2 devido ao fim de suporte/EOL do AL2).
 * `mongo_data_volume_size`: Tamanho em GB do volume EBS independente (padrão: `10` GB).
 * `api_ingress_cidr`: CIDR permitido para acessar a API em HTTP (padrão restrito ao IP do operador `/32` para proteção do tráfego).
@@ -288,6 +288,9 @@ A coleção oficial do Postman está versionada no diretório [`postman/`](postm
 
 Toda a documentação técnica exigida pelo curso está consolidada na pasta `docs/`:
 
+* **[Relatório Específico da Atividade IaC com Terraform (`docs/relatorio-iac-terraform.md`)](docs/relatorio-iac-terraform.md)**:
+  - Relatório enxuto (1 a 2 páginas) detalhando a estrutura de arquivos (`.tf` / `.tfvars`), os recursos AWS provisionados e a validação de conectividade SSH.
+
 * **[Relatório Técnico de Arquitetura e Infraestrutura (`docs/relatorio-tecnico.md`)](docs/relatorio-tecnico.md)**:
   - Análise dos modelos de serviço em nuvem (**SaaS hospedado em IaaS com Docker Compose**).
   - Diagrama de arquitetura em nuvem (VPC, AL2023 `t3.micro`, volume EBS independente, rede interna Docker).
@@ -297,8 +300,7 @@ Toda a documentação técnica exigida pelo curso está consolidada na pasta `do
 
 * **Evidências de Execução na AWS (`docs/evidencias/`)**:
   - [`terraform_init.txt`](docs/evidencias/terraform_init.txt): Sucesso na inicialização e download dos provedores.
-  - [`terraform_plan.txt`](docs/evidencias/terraform_plan.txt): Plano formal de provisionamento dos 12 recursos.
-  - [`terraform_apply.txt`](docs/evidencias/terraform_apply.txt): Execução do apply com criação da instância e volume EBS.
+  - [`terraform_apply.txt`](docs/evidencias/terraform_apply.txt): Geração do plano formal (`Plan: 12 to add`) e execução do `apply` com criação dos 12 recursos (instância EC2, rede e volume EBS).
   - [`validacao_ssh.txt`](docs/evidencias/validacao_ssh.txt): Comprovação de acesso SSH, kernel AL2023, montagem de `/mnt/mongo-data`, `.env` restrito e contêineres ativos.
   - [`testes_api_ec2.txt`](docs/evidencias/testes_api_ec2.txt): 45 de 45 passos aprovados executados diretamente contra a API pública na AWS.
 

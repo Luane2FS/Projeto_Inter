@@ -48,7 +48,7 @@ variable "availability_zone" {
 # ------------------------------------------------------------------------------
 
 variable "instance_type" {
-  description = "Tipo da instância EC2 (padrão: t3.micro). A elegibilidade ao AWS Free Tier (750h/mês) aplica-se a contas nos primeiros 12 meses de cadastro. O modo de créditos de CPU é configurado como 'standard' em main.tf para prevenir cobranças adicionais de consumo de CPU excedente."
+  description = "Tipo da instância EC2 (padrão: t3.micro). A elegibilidade e a duração do AWS Free Tier variam conforme o plano e a data de criação da conta (regras de 12 meses antes de 15/07/2025; créditos por até 6 meses ou até se esgotarem para contas novas). O modo 'standard' de créditos de CPU em main.tf limita apenas cobranças por CPU excedente, não garantindo isenção total de custos em todos os recursos."
   type        = string
   default     = "t3.micro"
 }

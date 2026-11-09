@@ -108,7 +108,7 @@
         "header": [{ "key": "Content-Type", "value": "application/json" }],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Lucas Admin\",\n  \"email\": \"admin.{{runId}}@empresa.com\",\n  \"password\": \"123456\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"registrationToken\": \"{{registrationToken}}\"\n}"
+          "raw": "{\n  \"name\": \"Luane Ferreira\",\n  \"email\": \"admin.{{runId}}@empresa.com\",\n  \"password\": \"123456\",\n  \"tenantId\": \"{{tenantId}}\",\n  \"registrationToken\": \"{{registrationToken}}\"\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/auth/register",

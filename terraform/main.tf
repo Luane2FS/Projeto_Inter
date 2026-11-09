@@ -205,7 +205,7 @@ resource "aws_volume_attachment" "mongo_data_attach" {
 
 # ------------------------------------------------------------------------------
 # 9. Instância EC2 (Computação Virtual na Nuvem)
-# Máquina t3.micro elegível ao Free Tier com provisionamento automatizado de Docker
+# Máquina t3.micro (elegibilidade ao Free Tier sujeita à data/plano da conta AWS)
 # ------------------------------------------------------------------------------
 resource "aws_instance" "app_server" {
   ami                         = var.ami_id != "" ? var.ami_id : data.aws_ami.amazon_linux_2023[0].id
@@ -215,7 +215,7 @@ resource "aws_instance" "app_server" {
   associate_public_ip_address = true
   key_name                    = var.create_ssh_key ? aws_key_pair.generated_key[0].key_name : var.existing_key_name
 
-  # Modo de créditos de CPU definido como standard para prevenir custos adicionais no Free Tier
+  # Modo standard limita cobranças por créditos de CPU excedentes (não isenta demais recursos)
   credit_specification {
     cpu_credits = "standard"
   }
